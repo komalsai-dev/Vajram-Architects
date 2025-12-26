@@ -1,0 +1,64 @@
+import { useState, useEffect } from "react";
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { WhatsAppButton } from "@/components/layout/WhatsAppButton";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import NotFound from "@/pages/not-found";
+import Home from "@/pages/home";
+import Contact from "@/pages/contact";
+import WorkWithUs from "@/pages/work-with-us";
+import About from "@/pages/about";
+import ClientPortfolio from "@/pages/client-portfolio";
+
+function Router() {
+  return (
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/work-with-us" component={WorkWithUs} />
+      <Route path="/about" component={About} />
+      <Route path="/client/:id">
+        {(params) => <ClientPortfolio clientId={params.id} />}
+      </Route>
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function App() {
+  // Only show loading screen once per session - check globally in App
+  const [showLoadingScreen, setShowLoadingScreen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hasSeenIntro = sessionStorage.getItem("hasSeenIntro");
+      return !hasSeenIntro; // Show loading if user hasn't seen intro
+    }
+    return true;
+  });
+
+  const handleLoadingComplete = () => {
+    setShowLoadingScreen(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("hasSeenIntro", "true");
+    }
+  };
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        {showLoadingScreen && <LoadingScreen onComplete={handleLoadingComplete} />}
+        {!showLoadingScreen && (
+          <>
+            <Router />
+            <WhatsAppButton />
+          </>
+        )}
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

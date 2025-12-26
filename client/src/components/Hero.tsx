@@ -1,0 +1,135 @@
+import { useState, useEffect } from "react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import { Button } from "@/components/ui/button";
+
+interface Slide {
+  id: string;
+  image: string;
+  title?: string;
+  caption?: string;
+}
+
+interface HeroProps {
+  slides: Slide[];
+}
+
+export function Hero({ slides }: HeroProps) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [isTextVisible, setIsTextVisible] = useState(false);
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    setCurrent(api.selectedScrollSnap());
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
+
+  // Trigger text animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTextVisible(true);
+    }, 300); // Small delay for smooth entrance
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-play functionality: scroll next every 4 seconds
+  useEffect(() => {
+    if (!api) return;
+
+    const interval = setInterval(() => {
+      api.scrollNext();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [api]);
+
+  return (
+    <section className="relative w-full h-screen bg-black -mt-[50px] sm:-mt-[60px] md:-mt-16">
+      <Carousel
+        setApi={setApi}
+        opts={{
+          align: "start",
+          loop: true,
+          containScroll: "trimSnaps",
+        }}
+        className="w-full h-full"
+      >
+        <CarouselContent className="!ml-0 h-full">
+          {slides.map((slide, index) => (
+            <CarouselItem key={slide.id} className="!basis-full !pl-0 h-full">
+              <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden m-0 p-0">
+                <img
+                  src={slide.image}
+                  alt={slide.title || `Slide ${index + 1}`}
+                  className="w-full h-full object-cover transition-transform duration-[20s] ease-out"
+                  loading={index === 0 ? "eager" : "lazy"}
+                />
+                
+                {/* Gradient Overlay for better text readability - Mobile: stronger gradient */}
+                <div className="absolute bottom-0 left-0 w-full h-2/3 md:h-1/2 bg-gradient-to-t from-black/80 via-black/50 to-transparent md:from-black/70 md:via-black/40 pointer-events-none" />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      
+      {/* Fixed Text Overlay - Mobile: adjusted padding and sizing, Desktop: original */}
+      <div className="absolute bottom-0 left-0 w-full px-4 sm:px-6 md:px-8 lg:px-12 pb-6 sm:pb-8 md:pb-12 lg:pb-16 xl:pb-20 z-20 pointer-events-none">
+        <div className="max-w-2xl pointer-events-auto">
+          {/* Heading - Mobile: smaller, Desktop: original */}
+          <h1 
+            className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif text-white mb-3 sm:mb-4 md:mb-6 leading-tight transition-all duration-1000 ease-out ${
+              isTextVisible 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-8'
+            }`}
+            style={{ transitionDelay: '0.2s' }}
+          >
+            Designing Spaces That Define Luxury
+          </h1>
+          
+          {/* Sub-Heading - Mobile: smaller, Desktop: original */}
+          <p 
+            className={`text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-white/90 mb-4 sm:mb-6 md:mb-8 lg:mb-10 font-sans leading-relaxed max-w-xl transition-all duration-1000 ease-out ${
+              isTextVisible 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-8'
+            }`}
+            style={{ transitionDelay: '0.4s' }}
+          >
+            Modern architecture, bespoke interiors, and premium living - built around your lifestyle.
+          </p>
+          
+          {/* CTA Button - Mobile: smaller, Desktop: original */}
+          <Button
+            onClick={() => {
+              const projectsSection = document.getElementById("guntur");
+              if (projectsSection) {
+                projectsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
+            className={`rounded-none border-white bg-white text-black hover:bg-gray-100 hover:text-black text-[10px] sm:text-xs md:text-sm font-bold tracking-[0.2em] px-4 sm:px-6 md:px-8 lg:px-10 h-9 sm:h-10 md:h-12 lg:h-14 uppercase transition-all duration-1000 ease-out ${
+              isTextVisible 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-8'
+            }`}
+            style={{ transitionDelay: '0.6s' }}
+          >
+            Explore Projects
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
