@@ -2,6 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { ArticleCard } from "./ArticleCard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
 
 interface Article {
   id: string;
@@ -74,8 +79,33 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
         </h2>
       )}
       
+      {/* Mobile: Horizontal swipeable carousel */}
+      <div className="md:hidden">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: false,
+            dragFree: true,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-2 md:-ml-4">
+            {articles.map((article, index) => (
+              <CarouselItem key={article.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[70%]">
+                <ArticleCard 
+                  {...article} 
+                  animationDelay={index * 0.1}
+                  isVisible={isVisible}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+
+      {/* Desktop: Grid layout (unchanged) */}
       <div className={cn(
-        "grid grid-cols-1 gap-x-4 sm:gap-x-6 md:gap-x-8 gap-y-8 sm:gap-y-10 md:gap-y-12",
+        "hidden md:grid grid-cols-1 gap-x-4 sm:gap-x-6 md:gap-x-8 gap-y-8 sm:gap-y-10 md:gap-y-12",
         columns === 2 ? "sm:grid-cols-2 lg:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"
       )}>
         {displayedArticles.map((article, index) => (
@@ -88,10 +118,10 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
         ))}
       </div>
       
-      {/* View More button - only show if there are more than 3 articles */}
+      {/* View More button - only show on desktop if there are more than 3 articles */}
       {hasMoreArticles && !showAll && (
         <div 
-          className={`flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-1000 ease-out ${
+          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-1000 ease-out ${
             isVisible 
               ? 'opacity-100 translate-y-0' 
               : 'opacity-0 translate-y-8'
@@ -108,9 +138,9 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
         </div>
       )}
       
-      {/* Show Less button when all articles are displayed */}
+      {/* Show Less button when all articles are displayed - only on desktop */}
       {hasMoreArticles && showAll && (
-        <div className="flex justify-center mt-8 sm:mt-10 md:mt-12">
+        <div className="hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12">
           <Button 
             onClick={() => {
               setShowAll(false);
@@ -128,10 +158,10 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
         </div>
       )}
       
-      {/* Legacy viewMoreLink support (if needed) */}
+      {/* Legacy viewMoreLink support (if needed) - only on desktop */}
       {viewMoreLink && !hasMoreArticles && (
         <div 
-          className={`flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-1000 ease-out ${
+          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-1000 ease-out ${
             isVisible 
               ? 'opacity-100 translate-y-0' 
               : 'opacity-0 translate-y-8'
