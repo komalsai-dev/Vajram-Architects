@@ -28,11 +28,12 @@ export function ArticleCard({ image, category, date, title, link, animationDelay
       style={{ transitionDelay: `${animationDelay}s` }}
     >
       <Link href={link} onClick={handleClick} className="block group cursor-pointer">
-      <div className="aspect-[3/2] overflow-hidden mb-3 sm:mb-4 bg-gray-100">
+      <div className="aspect-[3/2] overflow-hidden mb-3 sm:mb-4 bg-gray-100" style={{ borderRadius: '0.75rem' }}>
         <img 
           src={image} 
           alt={title} 
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          style={{ borderRadius: '0.75rem' }}
         />
       </div>
       

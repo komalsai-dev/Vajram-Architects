@@ -79,7 +79,7 @@ export default function Home() {
       <Navbar />
       
       <main>
-        <section id="hero">
+        <section id="hero" className="m-0 p-0">
           <Hero slides={heroSlides} />
         </section>
         

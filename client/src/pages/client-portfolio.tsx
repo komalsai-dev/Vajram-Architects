@@ -100,10 +100,11 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
               return (
                 <div 
                   key={`image-${index}-${imageSrc.slice(-10)}`} 
-                  className="relative group overflow-hidden bg-gray-900 cursor-pointer rounded-sm"
+                  className="relative group overflow-hidden bg-gray-900 cursor-pointer"
                   style={{ 
                     aspectRatio: '4 / 3',
-                    position: 'relative'
+                    position: 'relative',
+                    borderRadius: '0.75rem'
                   }}
                 >
                   {imageSrc ? (
@@ -115,7 +116,8 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
                         display: 'block',
                         position: 'relative',
                         width: '100%',
-                        height: '100%'
+                        height: '100%',
+                        borderRadius: '0.75rem'
                       }}
                       loading={index < 6 ? "eager" : "lazy"}
                       onError={(e) => {
@@ -123,7 +125,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent) {
-                          parent.innerHTML = '<div class="flex items-center justify-center w-full h-full text-gray-500 text-xs bg-gray-900 border-2 border-dashed border-gray-700">Failed to load</div>';
+                          parent.innerHTML = '<div class="flex items-center justify-center w-full h-full text-gray-500 text-xs bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg">Failed to load</div>';
                         }
                       }}
                     />

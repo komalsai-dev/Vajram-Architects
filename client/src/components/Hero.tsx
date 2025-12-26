@@ -22,6 +22,7 @@ export function Hero({ slides }: HeroProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [isTextVisible, setIsTextVisible] = useState(false);
+  const [heroStyles, setHeroStyles] = useState({ marginTop: '-90px', height: 'calc(100vh + 90px)', minHeight: 'calc(100vh + 90px)' });
 
   useEffect(() => {
     if (!api) {
@@ -54,8 +55,73 @@ export function Hero({ slides }: HeroProps) {
     return () => clearInterval(interval);
   }, [api]);
 
+  // Dynamically calculate hero section styles based on actual navbar height
+  // This ensures no gaps appear when navbar size changes (works for both mobile and desktop)
+  useEffect(() => {
+    const updateStyles = () => {
+      const navbar = document.getElementById('main-navbar');
+      if (!navbar) {
+        // Fallback values if navbar not found
+        const width = window.innerWidth;
+        if (width >= 768) {
+          setHeroStyles({ marginTop: '-97px', height: 'calc(90vh + 97px)', minHeight: 'calc(90vh + 97px)' });
+        } else {
+          setHeroStyles({ marginTop: '-97px', height: 'calc(90vh + 97px)', minHeight: 'calc(90vh + 97px)' });
+        }
+        return;
+      }
+
+      // Measure the actual navbar height (includes padding, border, etc.)
+      const navbarHeight = navbar.offsetHeight;
+      const width = window.innerWidth;
+
+      if (width >= 768) {
+        // Desktop: increased height to 90vh for better image coverage
+        setHeroStyles({ 
+          marginTop: `-${navbarHeight}px`, 
+          height: `calc(90vh + ${navbarHeight}px)`, 
+          minHeight: `calc(90vh + ${navbarHeight}px)` 
+        });
+      } else {
+        // Mobile/Tablet: increased height to 90vh for better image coverage and more bottom space
+        setHeroStyles({ 
+          marginTop: `-${navbarHeight}px`, 
+          height: `calc(90vh + ${navbarHeight}px)`, 
+          minHeight: `calc(90vh + ${navbarHeight}px)` 
+        });
+      }
+    };
+
+    // Initial calculation - delay slightly to ensure navbar is rendered
+    const timeoutId = setTimeout(() => {
+      updateStyles();
+    }, 50);
+
+    // Update on resize
+    window.addEventListener('resize', updateStyles);
+    
+    // Also update when DOM changes (in case navbar size changes)
+    const resizeObserver = new ResizeObserver(() => {
+      updateStyles();
+    });
+    
+    const navbar = document.getElementById('main-navbar');
+    if (navbar) {
+      resizeObserver.observe(navbar);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', updateStyles);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   return (
-    <section className="relative w-full h-screen bg-black -mt-[50px] sm:-mt-[60px] md:-mt-16">
+    <section 
+      className="relative w-full bg-black md:-mt-16 md:h-screen"
+      style={heroStyles}
+    >
       <Carousel
         setApi={setApi}
         opts={{
@@ -76,16 +142,16 @@ export function Hero({ slides }: HeroProps) {
                   loading={index === 0 ? "eager" : "lazy"}
                 />
                 
-                {/* Gradient Overlay for better text readability - Mobile: stronger gradient */}
-                <div className="absolute bottom-0 left-0 w-full h-2/3 md:h-1/2 bg-gradient-to-t from-black/80 via-black/50 to-transparent md:from-black/70 md:via-black/40 pointer-events-none" />
+                {/* Gradient Overlay for better text readability - Full coverage for centered content */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none" />
               </div>
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
       
-      {/* Fixed Text Overlay - Mobile: adjusted padding and sizing, Desktop: original */}
-      <div className="absolute bottom-0 left-0 w-full px-4 sm:px-6 md:px-8 lg:px-12 pb-6 sm:pb-8 md:pb-12 lg:pb-16 xl:pb-20 z-20 pointer-events-none">
+      {/* Fixed Text Overlay - Positioned further down on mobile, centered on desktop */}
+      <div className="absolute top-[75%] md:top-[65%] left-0 w-full px-4 sm:px-6 md:px-8 lg:px-12 -translate-y-1/2 z-20 pointer-events-none">
         <div className="max-w-2xl pointer-events-auto">
           {/* Heading - Mobile: smaller, Desktop: original */}
           <h1 
