@@ -14,7 +14,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
     if (!video) return;
 
     // Set playback speed to 1.5x
-    video.playbackRate = 2;
+    video.playbackRate = 1.75;
 
     const handleEnded = () => {
       setIsVisible(false);

@@ -1,10 +1,4 @@
 import { useState, useEffect } from "react";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  type CarouselApi,
-} from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 
 interface Slide {
@@ -19,22 +13,9 @@ interface HeroProps {
 }
 
 export function Hero({ slides }: HeroProps) {
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isTextVisible, setIsTextVisible] = useState(false);
   const [heroStyles, setHeroStyles] = useState({ marginTop: '-90px', height: 'calc(100vh + 90px)', minHeight: 'calc(100vh + 90px)' });
-
-  useEffect(() => {
-    if (!api) {
-      return;
-    }
-
-    setCurrent(api.selectedScrollSnap());
-
-    api.on("select", () => {
-      setCurrent(api.selectedScrollSnap());
-    });
-  }, [api]);
 
   // Trigger text animation on mount
   useEffect(() => {
@@ -44,16 +25,16 @@ export function Hero({ slides }: HeroProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-play functionality: scroll next every 4 seconds
+  // Auto-play functionality: fade to next image every 4 seconds
   useEffect(() => {
-    if (!api) return;
+    if (slides.length === 0) return;
 
     const interval = setInterval(() => {
-      api.scrollNext();
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [api]);
+  }, [slides.length]);
 
   // Dynamically calculate hero section styles based on actual navbar height
   // This ensures no gaps appear when navbar size changes (works for both mobile and desktop)
@@ -122,33 +103,31 @@ export function Hero({ slides }: HeroProps) {
       className="relative w-full bg-black md:-mt-16 md:h-screen"
       style={heroStyles}
     >
-      <Carousel
-        setApi={setApi}
-        opts={{
-          align: "start",
-          loop: true,
-          containScroll: "trimSnaps",
-        }}
-        className="w-full h-full"
-      >
-        <CarouselContent className="!ml-0 h-full">
-          {slides.map((slide, index) => (
-            <CarouselItem key={slide.id} className="!basis-full !pl-0 h-full">
-              <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden m-0 p-0">
-                <img
-                  src={slide.image}
-                  alt={slide.title || `Slide ${index + 1}`}
-                  className="w-full h-full object-cover transition-transform duration-[20s] ease-out"
-                  loading={index === 0 ? "eager" : "lazy"}
-                />
-                
-                {/* Gradient Overlay for better text readability - Full coverage for centered content */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none" />
-              </div>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
+      {/* Fade-based image carousel with smooth crossfade */}
+      <div className="relative w-full h-full overflow-hidden">
+        {slides.map((slide, index) => (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 w-full h-full transition-all duration-[2000ms] ease-in-out ${
+              index === currentIndex 
+                ? 'opacity-100 z-10 blur-0' 
+                : 'opacity-0 z-0 blur-sm'
+            }`}
+          >
+            <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden m-0 p-0">
+              <img
+                src={slide.image}
+                alt={slide.title || `Slide ${index + 1}`}
+                className="w-full h-full object-cover transition-transform duration-[20s] ease-out scale-105"
+                loading={index === 0 ? "eager" : "lazy"}
+              />
+              
+              {/* Gradient Overlay for better text readability - Full coverage for centered content */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none" />
+            </div>
+          </div>
+        ))}
+      </div>
       
       {/* Fixed Text Overlay - Positioned further down on mobile, centered on desktop */}
       <div className="absolute top-[75%] md:top-[65%] left-0 w-full px-4 sm:px-6 md:px-8 lg:px-12 -translate-y-1/2 z-20 pointer-events-none">
