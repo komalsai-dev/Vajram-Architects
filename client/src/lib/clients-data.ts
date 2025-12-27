@@ -399,16 +399,51 @@ function parseClientId(clientId: string): [string, string] | null {
 }
 
 /**
+ * Determine if an image is Interior or Exterior based on URL patterns
+ * @param imageUrl - Image URL string
+ * @returns "Interior" or "Exterior"
+ */
+function getImageLabel(imageUrl: string): "Interior" | "Exterior" {
+  const urlLower = imageUrl.toLowerCase();
+  
+  // Check for exterior patterns
+  if (urlLower.includes('elevation') || urlLower.includes('landscape')) {
+    return "Exterior";
+  }
+  
+  // Check for interior patterns
+  if (urlLower.includes('interior') || urlLower.includes('bedroom') || 
+      urlLower.includes('living') || urlLower.includes('room') || 
+      urlLower.includes('guest') || urlLower.includes('master')) {
+    return "Interior";
+  }
+  
+  // Default to Exterior if no pattern matches
+  return "Exterior";
+}
+
+export interface ClientImage {
+  url: string;
+  label: "Interior" | "Exterior";
+}
+
+/**
  * Get client images by client ID (format: "location-clientNumber")
  * @param clientId - Client ID in format "location-clientNumber" (e.g., "guntur-1")
+ * @returns Array of image objects with url and label properties
  */
-export function getClientImages(clientId: string): string[] {
+export function getClientImages(clientId: string): ClientImage[] {
   const parsed = parseClientId(clientId);
   if (!parsed) {
     return [];
   }
   const [location, clientNumber] = parsed;
-  return clientDataByLocation[location]?.[clientNumber]?.images || [];
+  const images = clientDataByLocation[location]?.[clientNumber]?.images || [];
+  
+  return images.map(url => ({
+    url,
+    label: getImageLabel(url)
+  }));
 }
 
 /**

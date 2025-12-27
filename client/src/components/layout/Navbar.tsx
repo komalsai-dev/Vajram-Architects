@@ -49,7 +49,7 @@ export function Navbar() {
     if (locationData.clients.length > 0) {
       const clientId = locationData.clients[0].id;
       const images = getClientImages(clientId);
-      return images.slice(0, 3); // Return first 3 images
+      return images.slice(0, 3).map(img => img.url); // Return first 3 image URLs
     }
     return [];
   };

@@ -178,19 +178,19 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
       className={`container mx-auto px-3 sm:px-4 mb-12 sm:mb-16 md:mb-20 scroll-mt-20 ${className}`}
     >
       <h2 
-        className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white transition-all duration-1000 ease-out ${
+        className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${
           isVisible 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-8'
+            ? 'opacity-100 translate-x-0' 
+            : 'opacity-0 -translate-x-12'
         }`}
       >
         Our Projects Locations
       </h2>
       <div 
-        className={`w-full h-[300px] sm:h-[350px] md:h-[400px] rounded-lg overflow-hidden border border-gray-800 transition-all duration-1000 ease-out ${
+        className={`w-full h-[300px] sm:h-[350px] md:h-[400px] rounded-lg overflow-hidden border border-gray-800 transition-all duration-[2000ms] ease-out ${
           isVisible 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-8'
+            ? 'opacity-100 translate-y-0 translate-x-0' 
+            : 'opacity-0 translate-y-12 translate-x-8'
         }`}
         style={{ 
           minHeight: "300px",
@@ -208,10 +208,10 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
         }
       `}</style>
       <p 
-        className={`text-gray-400 text-sm mt-4 text-center transition-all duration-1000 ease-out ${
+        className={`text-gray-400 text-sm mt-4 text-center transition-all duration-[2000ms] ease-out ${
           isVisible 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-8'
+            ? 'opacity-100 translate-x-0' 
+            : 'opacity-0 -translate-x-12'
         }`}
         style={{ transitionDelay: '0.4s' }}
       >

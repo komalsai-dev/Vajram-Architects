@@ -155,10 +155,10 @@ export function Hero({ slides }: HeroProps) {
         <div className="max-w-2xl pointer-events-auto">
           {/* Heading - Mobile: smaller, Desktop: original */}
           <h1 
-            className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif text-white mb-3 sm:mb-4 md:mb-6 leading-tight transition-all duration-1000 ease-out ${
+            className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif text-white mb-3 sm:mb-4 md:mb-6 leading-tight transition-all duration-[2000ms] ease-out ${
               isTextVisible 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-8'
+                ? 'opacity-100 translate-x-0' 
+                : 'opacity-0 -translate-x-12'
             }`}
             style={{ transitionDelay: '0.2s' }}
           >
@@ -167,10 +167,10 @@ export function Hero({ slides }: HeroProps) {
           
           {/* Sub-Heading - Mobile: smaller, Desktop: original */}
           <p 
-            className={`text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-white/90 mb-4 sm:mb-6 md:mb-8 lg:mb-10 font-sans leading-relaxed max-w-xl transition-all duration-1000 ease-out ${
+            className={`text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-white/90 mb-4 sm:mb-6 md:mb-8 lg:mb-10 font-sans leading-relaxed max-w-xl transition-all duration-[2000ms] ease-out ${
               isTextVisible 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-8'
+                ? 'opacity-100 translate-x-0' 
+                : 'opacity-0 -translate-x-12'
             }`}
             style={{ transitionDelay: '0.4s' }}
           >
@@ -185,10 +185,10 @@ export function Hero({ slides }: HeroProps) {
                 projectsSection.scrollIntoView({ behavior: "smooth", block: "start" });
               }
             }}
-            className={`rounded-none border-white bg-white text-black hover:bg-gray-100 hover:text-black text-[10px] sm:text-xs md:text-sm font-bold tracking-[0.2em] px-4 sm:px-6 md:px-8 lg:px-10 h-9 sm:h-10 md:h-12 lg:h-14 uppercase transition-all duration-1000 ease-out ${
+            className={`rounded-none border-white bg-white text-black hover:bg-gray-100 hover:text-black text-[10px] sm:text-xs md:text-sm font-bold tracking-[0.2em] px-4 sm:px-6 md:px-8 lg:px-10 h-9 sm:h-10 md:h-12 lg:h-14 uppercase transition-all duration-[2000ms] ease-out ${
               isTextVisible 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-8'
+                ? 'opacity-100 translate-x-0' 
+                : 'opacity-0 -translate-x-12'
             }`}
             style={{ transitionDelay: '0.6s' }}
           >

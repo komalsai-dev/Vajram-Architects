@@ -13,6 +13,9 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
     const video = videoRef.current;
     if (!video) return;
 
+    // Set playback speed to 1.5x
+    video.playbackRate = 2;
+
     const handleEnded = () => {
       setIsVisible(false);
       // Small delay before calling onComplete to allow fade out

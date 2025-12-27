@@ -20,10 +20,10 @@ export function ArticleCard({ image, category, date, title, link, animationDelay
 
   return (
     <div
-      className={`transition-all duration-1000 ease-out ${
+      className={`transition-all duration-[1800ms] ease-out ${
         isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-8'
+          ? 'opacity-100 translate-y-0 translate-x-0' 
+          : 'opacity-0 translate-y-12 translate-x-8'
       }`}
       style={{ transitionDelay: `${animationDelay}s` }}
     >

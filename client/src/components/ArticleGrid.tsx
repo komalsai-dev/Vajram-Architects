@@ -69,10 +69,10 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
     >
       {title && (
         <h2 
-          className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white transition-all duration-1000 ease-out ${
+          className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${
             isVisible 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-8'
+              ? 'opacity-100 translate-x-0' 
+              : 'opacity-0 -translate-x-12'
           }`}
         >
           {title}
@@ -121,10 +121,10 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
       {/* View More button - only show on desktop if there are more than 3 articles */}
       {hasMoreArticles && !showAll && (
         <div 
-          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-1000 ease-out ${
+          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-[2000ms] ease-out ${
             isVisible 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-8'
+              ? 'opacity-100 translate-y-0 translate-x-0' 
+              : 'opacity-0 translate-y-8 translate-x-8'
           }`}
           style={{ transitionDelay: `${displayedArticles.length * 0.1 + 0.2}s` }}
         >
@@ -161,10 +161,10 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
       {/* Legacy viewMoreLink support (if needed) - only on desktop */}
       {viewMoreLink && !hasMoreArticles && (
         <div 
-          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-1000 ease-out ${
+          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-[2000ms] ease-out ${
             isVisible 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-8'
+              ? 'opacity-100 translate-y-0 translate-x-0' 
+              : 'opacity-0 translate-y-8 translate-x-8'
           }`}
           style={{ transitionDelay: `${displayedArticles.length * 0.1 + 0.2}s` }}
         >

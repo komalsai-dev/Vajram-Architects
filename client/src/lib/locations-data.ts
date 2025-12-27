@@ -26,7 +26,7 @@ export function getLocationData(locationName: string): LocationData {
     
     return {
       id: clientId,
-      image: images[0] || "", // Use first image as preview
+      image: images[0]?.url || "", // Use first image as preview
       title: name,
       link: `/client/${clientId}`,
     };
