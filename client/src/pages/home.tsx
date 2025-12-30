@@ -64,10 +64,14 @@ export default function Home() {
 
   // Convert location clients to article format for ArticleGrid component
   const convertToArticles = (locationData: typeof gunturData) => {
+    const categoryText = locationData.stateOrCountry 
+      ? `${locationData.name} (${locationData.stateOrCountry})`
+      : locationData.name;
+    
     return locationData.clients.map((client) => ({
       id: client.id,
       image: client.image,
-      category: locationData.name,
+      category: categoryText,
       date: "", // No date needed for locations
       title: client.title,
       link: client.link,
@@ -85,32 +89,38 @@ export default function Home() {
         
             <ArticleGrid 
               title="Guntur" 
+              stateOrCountry={gunturData.stateOrCountry}
               articles={convertToArticles(gunturData)}
               isFirstSection={true}
             />
 
             <ArticleGrid 
               title="Hyderabad" 
+              stateOrCountry={hyderabadData.stateOrCountry}
               articles={convertToArticles(hyderabadData)}
             />
 
             <ArticleGrid 
               title="Siddipet" 
+              stateOrCountry={siddipetData.stateOrCountry}
               articles={convertToArticles(siddipetData)}
             />
 
             <ArticleGrid 
               title="Suryapet" 
+              stateOrCountry={suryapetData.stateOrCountry}
               articles={convertToArticles(suryapetData)}
             />
 
             <ArticleGrid 
               title="Nirmal" 
+              stateOrCountry={nirmalData.stateOrCountry}
               articles={convertToArticles(nirmalData)}
             />
 
             <ArticleGrid 
               title="Ireland" 
+              stateOrCountry={irelandData.stateOrCountry}
               articles={convertToArticles(irelandData)}
             />
 

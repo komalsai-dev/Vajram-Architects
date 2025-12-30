@@ -19,13 +19,14 @@ interface Article {
 
 interface ArticleGridProps {
   title: string;
+  stateOrCountry?: string;
   articles: Article[];
   viewMoreLink?: string;
   columns?: 2 | 3;
   isFirstSection?: boolean;
 }
 
-export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirstSection = false }: ArticleGridProps) {
+export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, columns = 3, isFirstSection = false }: ArticleGridProps) {
   const [showAll, setShowAll] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -34,6 +35,9 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
   // Show only first 3 articles by default, all if showAll is true
   const displayedArticles = showAll ? articles : articles.slice(0, 3);
   const hasMoreArticles = articles.length > 3;
+  
+  // Format title with state/country in brackets
+  const displayTitle = stateOrCountry ? `${title} (${stateOrCountry})` : title;
 
   // Intersection Observer for scroll-triggered animations
   useEffect(() => {
@@ -68,15 +72,27 @@ export function ArticleGrid({ title, articles, viewMoreLink, columns = 3, isFirs
       }`}
     >
       {title && (
-        <h2 
-          className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
-              : 'opacity-0 -translate-x-12'
-          }`}
-        >
-          {title}
-        </h2>
+        <div className="mb-6 sm:mb-8">
+          <h2 
+            className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-2 text-white transition-all duration-[2000ms] ease-out ${
+              isVisible 
+                ? 'opacity-100 translate-x-0' 
+                : 'opacity-0 -translate-x-12'
+            }`}
+          >
+            {displayTitle}
+          </h2>
+          <p 
+            className={`text-xs sm:text-sm text-gray-400 transition-all duration-[2000ms] ease-out ${
+              isVisible 
+                ? 'opacity-100 translate-x-0' 
+                : 'opacity-0 -translate-x-12'
+            }`}
+            style={{ transitionDelay: '0.1s' }}
+          >
+            Total Projects - {articles.length}
+          </p>
+        </div>
       )}
       
       {/* Mobile: Horizontal swipeable carousel */}
