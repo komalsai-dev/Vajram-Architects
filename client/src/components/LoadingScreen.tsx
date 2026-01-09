@@ -18,7 +18,6 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
     const handleEnded = () => {
       if (!isMounted) return;
       setIsVisible(false);
-      // Small delay before calling onComplete to allow fade out
       setTimeout(() => {
         if (isMounted) {
           onComplete();
@@ -28,56 +27,50 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
     const handleLoadedMetadata = () => {
       if (!isMounted || !video) return;
-      // Set playback speed after metadata is loaded
-      video.playbackRate = 1.75;
-      
-      // Ensure video plays smoothly
-      video.play().catch((error) => {
-        console.error("Error playing video:", error);
-        // If video fails to play, still hide after a delay
-        if (isMounted) {
-          setTimeout(() => {
-            handleEnded();
-          }, 1000);
-        }
-      });
+      // Set 2x playback speed for smooth playback
+      video.playbackRate = 2.0;
+      video.defaultPlaybackRate = 2.0;
     };
 
-    const handleCanPlay = () => {
+    const handleCanPlayThrough = () => {
       if (!isMounted || !video) return;
-      // Ensure video is playing when it can play
+      // Ensure 2x speed is maintained
+      if (video.playbackRate !== 2.0) {
+        video.playbackRate = 2.0;
+      }
+      // Ensure video is playing
       if (video.paused) {
-        video.play().catch((error) => {
-          console.error("Error playing video on canPlay:", error);
+        video.play().catch(() => {
+          if (isMounted) handleEnded();
         });
       }
     };
 
     const handleError = () => {
       if (!isMounted) return;
-      console.error("Video loading error");
-      // If video fails to load, hide after a delay
-      setTimeout(() => {
-        handleEnded();
-      }, 1000);
+      setTimeout(() => handleEnded(), 1000);
     };
+
+    // Set 2x speed immediately
+    video.playbackRate = 2.0;
+    video.defaultPlaybackRate = 2.0;
 
     // Add event listeners
     video.addEventListener("ended", handleEnded);
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
-    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("canplaythrough", handleCanPlayThrough);
     video.addEventListener("error", handleError);
 
-    // If metadata is already loaded, set playback rate immediately
-    if (video.readyState >= 1) {
-      handleLoadedMetadata();
-    }
+    // Start playing
+    video.play().catch(() => {
+      // If autoplay fails, wait for canplaythrough
+    });
 
     return () => {
       isMounted = false;
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("canplaythrough", handleCanPlayThrough);
       video.removeEventListener("error", handleError);
     };
   }, [onComplete]);
@@ -86,9 +79,11 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] bg-black transition-opacity duration-300 ${
-        isVisible ? "opacity-100" : "opacity-0"
-      }`}
+      className="fixed inset-0 z-[9999] bg-black transition-opacity duration-300"
+      style={{
+        transform: "translateZ(0)",
+        backfaceVisibility: "hidden",
+      }}
     >
       <video
         ref={videoRef}
@@ -98,13 +93,12 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover"
         style={{
-          willChange: "auto",
           transform: "translateZ(0)",
           backfaceVisibility: "hidden",
+          objectFit: "cover",
         }}
       >
         <source src={heroVideo} type="video/mp4" />
-        Your browser does not support the video tag.
       </video>
     </div>
   );
