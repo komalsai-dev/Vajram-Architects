@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { getClientImages, getClientName } from "@/lib/clients-data";
 
 interface ClientPortfolioProps {
@@ -14,6 +15,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
   const clientName = getClientName(clientId);
   const [showAll, setShowAll] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   
   // Scroll to top when component mounts or clientId changes
@@ -141,15 +143,20 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
               return (
                 <div 
                   key={`image-${index}-${imageSrc.slice(-10)}`} 
-                  className={`relative transition-all duration-[1800ms] ease-out ${
+                  className={`relative transition-all duration-[1800ms] ease-out cursor-pointer ${
                     isVisible 
                       ? 'opacity-100 translate-y-0 translate-x-0' 
                       : 'opacity-0 translate-y-12 translate-x-8'
                   }`}
                   style={{ transitionDelay: `${0.4 + index * 0.1}s` }}
+                  onClick={() => {
+                    if (imageSrc) {
+                      setSelectedImage(imageSrc);
+                    }
+                  }}
                 >
                 <div 
-                  className="relative group overflow-hidden bg-gray-900 cursor-pointer"
+                  className="relative group overflow-hidden bg-gray-900"
                   style={{ 
                     aspectRatio: '4 / 3',
                     position: 'relative',
@@ -232,6 +239,15 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
       </main>
       
       <Footer />
+      
+      {selectedImage && (
+        <ImageLightbox
+          isOpen={!!selectedImage}
+          onClose={() => setSelectedImage(null)}
+          imageSrc={selectedImage}
+          imageAlt={`${clientName} - Portfolio Image`}
+        />
+      )}
     </div>
   );
 }

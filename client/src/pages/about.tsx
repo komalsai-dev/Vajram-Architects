@@ -260,11 +260,22 @@ export default function About() {
                 Our Reach
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 max-w-5xl mx-auto">
-                {["Guntur", "Hyderabad", "Siddipet", "Suryapet", "Nirmal", "Ireland"].map((location) => (
-                  <div key={location} className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-lg text-center">
-                    <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-white mx-auto mb-2 sm:mb-3" />
-                    <p className="text-white font-medium text-sm sm:text-base">{location}</p>
-                  </div>
+                {[
+                  { name: "Guntur", id: "guntur" },
+                  { name: "Hyderabad", id: "hyderabad" },
+                  { name: "Siddipet", id: "siddipet" },
+                  { name: "Suryapet", id: "suryapet" },
+                  { name: "Nirmal", id: "nirmal" },
+                  { name: "Ireland", id: "ireland" }
+                ].map((location) => (
+                  <Link 
+                    key={location.id}
+                    href={`/#${location.id}`}
+                    className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-lg text-center hover:bg-gray-800 hover:border-gray-700 transition-colors cursor-pointer group"
+                  >
+                    <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-white mx-auto mb-2 sm:mb-3 transition-transform group-hover:scale-110" />
+                    <p className="text-white font-medium text-sm sm:text-base group-hover:text-gray-200 transition-colors">{location.name}</p>
+                  </Link>
                 ))}
               </div>
             </section>
