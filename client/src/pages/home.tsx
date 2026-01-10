@@ -6,12 +6,6 @@ import { ArticleGrid } from "@/components/ArticleGrid";
 import { ProjectsMap } from "@/components/ProjectsMap";
 import { getLocationData } from "@/lib/locations-data";
 
-// Import best client images for hero slides
-import client3_img4 from "@assets/images/client-3/Mr,Rohith_Elevation_1 - Photo.jpg";
-import client6_img1 from "@assets/images/client-6/Mr.Zahir Elevation OP4_12 - Photo.jpg";
-import client7_img1 from "@assets/images/client-7/Mr.Girish Reddy_Elevation Renders_11 - Photo.jpg";
-import client9_img12 from "@assets/images/client-9/Mr.G Narender Reddy Landscape Renders_42 - Photo.jpg";
-
 export default function Home() {
   // Restore scroll position when returning from portfolio page
   useEffect(() => {
@@ -48,10 +42,10 @@ export default function Home() {
 
   // Hero slides - Best client images
   const heroSlides = [
-    { id: "hero-1", image: client3_img4, title: "Mr. Rohith Elevation" },
-    { id: "hero-2", image: client6_img1, title: "Mr. Zahir Elevation" },
-    { id: "hero-3", image: client7_img1, title: "Mr. Girish Reddy Elevation" },
-    { id: "hero-4", image: client9_img12, title: "Mr.G Narender Reddy Landscape" },
+    { id: "hero-1", image: "https://res.cloudinary.com/da9ppibpk/image/upload/v1768014769/Mr_Rohith_Elevation_1_-_Photo_kb1ute.jpg", title: "Mr. Rohith Elevation" },
+    { id: "hero-2", image: "https://res.cloudinary.com/da9ppibpk/image/upload/v1768014941/Mr.Zahir_Elevation_OP4_12_-_Photo_hxmlnn.jpg", title: "Mr. Zahir Elevation" },
+    { id: "hero-3", image: "https://res.cloudinary.com/da9ppibpk/image/upload/v1768014988/Mr.Girish_Reddy_Elevation_Renders_11_-_Photo_zkr7iv.jpg", title: "Mr. Girish Reddy Elevation" },
+    { id: "hero-4", image: "https://res.cloudinary.com/da9ppibpk/image/upload/v1768015019/Mr.G_Narender_Reddy_Landscape_Renders_42_-_Photo_ncdgbz.jpg", title: "Mr.G Narender Reddy Landscape" },
   ];
 
   // Location-based data
