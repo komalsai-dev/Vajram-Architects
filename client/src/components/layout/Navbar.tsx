@@ -168,7 +168,7 @@ export function Navbar() {
               className="flex items-center group md:hidden"
             >
               <img 
-                src="/logo.png" 
+                src="https://res.cloudinary.com/da9ppibpk/image/upload/v1768016099/logo_rwoit1.png" 
                 alt="VAJRAM ARCHITECTS" 
                 className="h-[84px] sm:h-[100px] w-auto object-contain transition-opacity duration-300 group-hover:opacity-80"
               />
@@ -189,7 +189,7 @@ export function Navbar() {
               className="hidden md:flex items-center group"
             >
               <img 
-                src="/logo.png" 
+                src="https://res.cloudinary.com/da9ppibpk/image/upload/v1768016099/logo_rwoit1.png" 
                 alt="VAJRAM ARCHITECTS" 
                 className="h-20 lg:h-24 xl:h-28 w-auto object-contain transition-opacity duration-300 group-hover:opacity-80 md:mt-2 lg:mt-2.5 xl:mt-3"
               />
