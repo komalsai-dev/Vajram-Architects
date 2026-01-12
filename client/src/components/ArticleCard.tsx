@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { MapPin } from "lucide-react";
 
 interface ArticleCardProps {
   image: string;
@@ -39,7 +40,10 @@ export function ArticleCard({ image, category, date, title, link, animationDelay
       
       {category && (
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0 text-[9px] sm:text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-2 border-b border-gray-800 pb-2">
-          <span className="hover:text-white transition-colors underline decoration-transparent hover:decoration-gray-400 underline-offset-2 sm:underline-offset-4">{category}</span>
+          <span className="hover:text-white transition-colors underline decoration-transparent hover:decoration-gray-400 underline-offset-2 sm:underline-offset-4 flex items-center gap-1.5">
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+            {category}
+          </span>
           {date && <span className="text-[8px] sm:text-[10px]">{date}</span>}
         </div>
       )}

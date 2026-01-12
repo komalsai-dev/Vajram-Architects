@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArticleCard } from "./ArticleCard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MapPin } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -74,12 +75,13 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
       {title && (
         <div className="mb-6 sm:mb-8">
           <h2 
-            className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-2 text-white transition-all duration-[2000ms] ease-out ${
+            className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-2 text-white transition-all duration-[2000ms] ease-out flex items-center gap-2 sm:gap-3 ${
               isVisible 
                 ? 'opacity-100 translate-x-0' 
                 : 'opacity-0 -translate-x-12'
             }`}
           >
+            <MapPin className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex-shrink-0" />
             {displayTitle}
           </h2>
           <p 
