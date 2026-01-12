@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface ImageLightboxProps {
   isOpen: boolean;
@@ -9,13 +8,13 @@ interface ImageLightboxProps {
 }
 
 export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }: ImageLightboxProps) {
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Reset zoom and position when image changes or lightbox closes
   useEffect(() => {
@@ -45,16 +44,16 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     };
   }, [isOpen, onClose]);
 
-  // Calculate distance between two touches
+  // Calculate distance between two touches for pinch zoom
   const getTouchDistance = (touch1: Touch, touch2: Touch) => {
     const dx = touch2.clientX - touch1.clientX;
     const dy = touch2.clientY - touch1.clientY;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // Handle mouse wheel zoom
+  // Handle mouse wheel zoom (desktop)
   const handleWheel = useCallback((e: WheelEvent) => {
-    if (!isOpen) return;
+    if (!isOpen || !imageContainerRef.current) return;
     
     e.preventDefault();
     const delta = e.deltaY * -0.001;
@@ -62,22 +61,20 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     
     if (newScale !== scale) {
       // Zoom towards mouse position
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (rect) {
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        const scaleChange = newScale / scale;
-        const newX = mouseX - (mouseX - position.x) * scaleChange;
-        const newY = mouseY - (mouseY - position.y) * scaleChange;
-        
-        setScale(newScale);
-        setPosition({ x: newX, y: newY });
-      }
+      const rect = imageContainerRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left - rect.width / 2;
+      const mouseY = e.clientY - rect.top - rect.height / 2;
+      
+      const scaleChange = newScale / scale;
+      const newX = mouseX - (mouseX - position.x) * scaleChange;
+      const newY = mouseY - (mouseY - position.y) * scaleChange;
+      
+      setScale(newScale);
+      setPosition({ x: newX, y: newY });
     }
   }, [isOpen, scale, position]);
 
-  // Handle mouse drag
+  // Handle mouse drag (desktop)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (scale > 1) {
       setIsDragging(true);
@@ -90,15 +87,15 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
       
-      // Get container and image dimensions to constrain panning
-      const container = containerRef.current;
+      // Constrain panning to keep image within bounds
+      const container = imageContainerRef.current;
       const image = imageRef.current;
       if (container && image) {
         const containerRect = container.getBoundingClientRect();
         const imageRect = image.getBoundingClientRect();
         
-        const maxX = (imageRect.width - containerRect.width) / 2;
-        const maxY = (imageRect.height - containerRect.height) / 2;
+        const maxX = Math.max(0, (imageRect.width * scale - containerRect.width) / 2);
+        const maxY = Math.max(0, (imageRect.height * scale - containerRect.height) / 2);
         
         setPosition({
           x: Math.max(-maxX, Math.min(maxX, newX)),
@@ -114,7 +111,7 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     setIsDragging(false);
   }, []);
 
-  // Touch handlers for pinch zoom and pan
+  // Touch handlers for pinch zoom and pan (mobile)
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       // Pinch zoom
@@ -141,10 +138,10 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
         const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
         
-        const rect = containerRef.current?.getBoundingClientRect();
+        const rect = imageContainerRef.current?.getBoundingClientRect();
         if (rect) {
-          const mouseX = centerX - rect.left;
-          const mouseY = centerY - rect.top;
+          const mouseX = centerX - rect.left - rect.width / 2;
+          const mouseY = centerY - rect.top - rect.height / 2;
           
           const scaleFactor = newScale / scale;
           const newX = mouseX - (mouseX - position.x) * scaleFactor;
@@ -163,14 +160,14 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       const newY = touch.clientY - dragStart.y;
       
       // Constrain panning
-      const container = containerRef.current;
+      const container = imageContainerRef.current;
       const image = imageRef.current;
       if (container && image) {
         const containerRect = container.getBoundingClientRect();
         const imageRect = image.getBoundingClientRect();
         
-        const maxX = (imageRect.width - containerRect.width) / 2;
-        const maxY = (imageRect.height - containerRect.height) / 2;
+        const maxX = Math.max(0, (imageRect.width * scale - containerRect.width) / 2);
+        const maxY = Math.max(0, (imageRect.height * scale - containerRect.height) / 2);
         
         setPosition({
           x: Math.max(-maxX, Math.min(maxX, newX)),
@@ -187,69 +184,85 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     setLastTouchDistance(null);
   }, []);
 
-  // Set up global mouse event listeners
+  // Set up global mouse event listeners for drag
   useEffect(() => {
     if (isOpen) {
-      const container = containerRef.current;
-      if (container) {
-        container.addEventListener("wheel", handleWheel, { passive: false });
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", handleMouseUp);
-      }
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
 
       return () => {
-        if (container) {
-          container.removeEventListener("wheel", handleWheel);
-        }
         window.removeEventListener("mousemove", handleMouseMove);
         window.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isOpen, handleWheel, handleMouseMove, handleMouseUp]);
+  }, [isOpen, handleMouseMove, handleMouseUp]);
 
-  // Handle backdrop click to close (but not when dragging)
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !isDragging) {
+  // Set up wheel event listener for zoom
+  useEffect(() => {
+    if (isOpen && imageContainerRef.current) {
+      const container = imageContainerRef.current;
+      container.addEventListener("wheel", handleWheel, { passive: false });
+
+      return () => {
+        container.removeEventListener("wheel", handleWheel);
+      };
+    }
+  }, [isOpen, handleWheel]);
+
+  // Handle backdrop click to close (works for both mouse and touch)
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't close if dragging
+    if (isDragging) return;
+    
+    // Check if the click is on the backdrop itself (not on the image or its container)
+    const target = e.target as HTMLElement;
+    const backdrop = e.currentTarget;
+    
+    // Close only if clicking directly on the backdrop (not on the image container or image)
+    if (target === backdrop) {
       onClose();
     }
   };
 
-  // Prevent image click from closing the lightbox
-  const handleImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Prevent image container clicks from closing the lightbox (but allow drag)
+  const handleImageContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only stop propagation if not dragging (to allow backdrop close when not dragging)
+    if (!isDragging) {
+      e.stopPropagation();
+    }
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
     >
       <div
-        ref={containerRef}
-        className="relative max-w-[85vw] max-h-[85vh] w-auto h-auto flex items-center justify-center"
-        onClick={handleImageClick}
+        ref={imageContainerRef}
+        className="relative inline-flex items-center justify-center overflow-hidden"
+        style={{
+          cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "zoom-in",
+        }}
+        onClick={handleImageContainerClick}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <img
           ref={imageRef}
           src={imageSrc}
           alt={imageAlt}
-          className={cn(
-            "max-w-full max-h-[85vh] object-contain select-none rounded-lg shadow-2xl",
-            scale > 1 && "cursor-move",
-            scale === 1 && "cursor-zoom-in"
-          )}
+          className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl select-none pointer-events-auto"
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transition: isDragging ? "none" : "transform 0.1s ease-out",
             transformOrigin: "center center",
+            transition: isDragging ? "none" : "transform 0.2s ease-out",
           }}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
           draggable={false}
+          onClick={(e) => e.stopPropagation()}
         />
       </div>
     </div>
