@@ -9,16 +9,34 @@ interface ImageLightboxProps {
 
 export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }: ImageLightboxProps) {
   const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+  const [lastTouchCenter, setLastTouchCenter] = useState<{ x: number; y: number } | null>(null);
+  const [lastPinchScale, setLastPinchScale] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
 
-  // Reset zoom when image changes or lightbox closes
+  // Reset zoom and position when image changes or lightbox closes
   useEffect(() => {
     if (!isOpen) {
       setScale(1);
+      setPosition({ x: 0, y: 0 });
       setLastTouchDistance(null);
+      setLastTouchCenter(null);
+      setLastPinchScale(1);
+      setIsDragging(false);
     }
   }, [isOpen, imageSrc]);
+
+  // Reset position when scale returns to 1
+  useEffect(() => {
+    if (scale === 1) {
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [scale]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -46,77 +64,210 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  // Calculate center point between two touches
+  const getTouchCenter = (touch1: React.Touch, touch2: React.Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2,
+    };
+  };
+
+  // Constrain position to keep image within bounds
+  const constrainPosition = useCallback((x: number, y: number, currentScale: number) => {
+    if (!imageRef.current || !containerRef.current) return { x: 0, y: 0 };
+    
+    const img = imageRef.current;
+    const container = containerRef.current;
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Get natural image dimensions
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    
+    // Calculate displayed dimensions (accounting for object-contain)
+    const containerAspect = containerRect.width / containerRect.height;
+    const imageAspect = naturalWidth / naturalHeight;
+    
+    let displayedWidth: number;
+    let displayedHeight: number;
+    
+    if (imageAspect > containerAspect) {
+      displayedWidth = Math.min(containerRect.width * 0.9, naturalWidth);
+      displayedHeight = displayedWidth / imageAspect;
+    } else {
+      displayedHeight = Math.min(containerRect.height * 0.9, naturalHeight);
+      displayedWidth = displayedHeight * imageAspect;
+    }
+    
+    // Scaled dimensions
+    const scaledWidth = displayedWidth * currentScale;
+    const scaledHeight = displayedHeight * currentScale;
+    
+    // Calculate bounds
+    const maxX = Math.max(0, (scaledWidth - containerRect.width) / 2);
+    const maxY = Math.max(0, (scaledHeight - containerRect.height) / 2);
+    
+    return {
+      x: Math.max(-maxX, Math.min(maxX, x)),
+      y: Math.max(-maxY, Math.min(maxY, y)),
+    };
+  }, []);
+
   // Handle mouse wheel zoom (desktop) - zoom towards mouse position
   const handleWheel = useCallback((e: WheelEvent) => {
-    if (!isOpen || !imageRef.current) return;
+    if (!isOpen || !imageRef.current || !containerRef.current) return;
     
     e.preventDefault();
     const delta = e.deltaY * -0.01;
-    const newScale = Math.min(Math.max(1, scale + delta), 3); // Limit zoom between 1x and 3x
+    const newScale = Math.min(Math.max(1, scale + delta), 3);
     
     if (newScale !== scale && imageRef.current) {
       const img = imageRef.current;
-      const rect = img.getBoundingClientRect();
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
       
-      // Calculate mouse position relative to image (0-1)
-      const mouseX = (e.clientX - rect.left) / rect.width;
-      const mouseY = (e.clientY - rect.top) / rect.height;
+      // Calculate mouse position relative to container center
+      const mouseX = e.clientX - rect.left - rect.width / 2;
+      const mouseY = e.clientY - rect.top - rect.height / 2;
       
-      // Set transform origin to mouse position
-      img.style.transformOrigin = `${mouseX * 100}% ${mouseY * 100}%`;
+      // Calculate new position to zoom towards mouse
+      const scaleChange = newScale / scale;
+      const newX = mouseX - (mouseX - position.x) * scaleChange;
+      const newY = mouseY - (mouseY - position.y) * scaleChange;
+      
+      const constrained = constrainPosition(newX, newY, newScale);
+      
+      setPosition(constrained);
       setScale(newScale);
     }
-  }, [isOpen, scale]);
+  }, [isOpen, scale, position, constrainPosition]);
 
-  // Touch handlers for pinch zoom (mobile)
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
+  // Mouse drag handlers (desktop)
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale > 1) {
       e.preventDefault();
-      const distance = getTouchDistance(e.touches[0], e.touches[1]);
-      setLastTouchDistance(distance);
+      setIsDragging(true);
+      setDragStart({ x: e.clientX, y: e.clientY });
+      setInitialPosition(position);
     }
+  }, [scale, position]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (isDragging && scale > 1) {
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+      const newX = initialPosition.x + deltaX;
+      const newY = initialPosition.y + deltaY;
+      
+      const constrained = constrainPosition(newX, newY, scale);
+      setPosition(constrained);
+    }
+  }, [isDragging, scale, dragStart, initialPosition, constrainPosition]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
   }, []);
 
+  // Touch handlers for pinch zoom and drag (mobile)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches[0], e.touches[1]);
+      const center = getTouchCenter(e.touches[0], e.touches[1]);
+      
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const rect = container.getBoundingClientRect();
+        const centerX = center.x - rect.left - rect.width / 2;
+        const centerY = center.y - rect.top - rect.height / 2;
+        
+        setLastTouchCenter({ x: centerX, y: centerY });
+      }
+      
+      setLastTouchDistance(distance);
+      setLastPinchScale(scale);
+      setIsDragging(false);
+    } else if (e.touches.length === 1 && scale > 1) {
+      // Single touch drag
+      e.preventDefault();
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setInitialPosition(position);
+    }
+  }, [scale, position]);
+
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouchDistance !== null) {
+    if (e.touches.length === 2 && lastTouchDistance !== null && lastTouchCenter) {
+      // Pinch zoom
       e.preventDefault();
       const distance = getTouchDistance(e.touches[0], e.touches[1]);
       const scaleChange = distance / lastTouchDistance;
-      let newScale = scale * scaleChange;
+      let newScale = lastPinchScale * scaleChange;
       
       // Limit zoom between 1x and 3x
       newScale = Math.min(Math.max(1, newScale), 3);
       
+      // Calculate new position to zoom towards pinch center
+      const scaleRatio = newScale / lastPinchScale;
+      const newX = lastTouchCenter.x - (lastTouchCenter.x - position.x) * scaleRatio;
+      const newY = lastTouchCenter.y - (lastTouchCenter.y - position.y) * scaleRatio;
+      
+      const constrained = constrainPosition(newX, newY, newScale);
+      
+      setPosition(constrained);
       setScale(newScale);
       setLastTouchDistance(distance);
+    } else if (e.touches.length === 1 && isDragging && scale > 1) {
+      // Single touch drag
+      e.preventDefault();
+      const deltaX = e.touches[0].clientX - dragStart.x;
+      const deltaY = e.touches[0].clientY - dragStart.y;
+      const newX = initialPosition.x + deltaX;
+      const newY = initialPosition.y + deltaY;
+      
+      const constrained = constrainPosition(newX, newY, scale);
+      setPosition(constrained);
     }
-  }, [scale, lastTouchDistance]);
+  }, [lastTouchDistance, lastTouchCenter, lastPinchScale, position, isDragging, scale, dragStart, initialPosition, constrainPosition]);
 
   const handleTouchEnd = useCallback(() => {
     setLastTouchDistance(null);
+    setLastTouchCenter(null);
+    setIsDragging(false);
   }, []);
 
   // Set up wheel event listener for zoom
   useEffect(() => {
-    if (isOpen && imageRef.current) {
-      const img = imageRef.current;
-      const container = img.parentElement;
-      if (container) {
-        container.addEventListener("wheel", handleWheel, { passive: false });
-        return () => {
-          container.removeEventListener("wheel", handleWheel);
-        };
-      }
+    if (isOpen && containerRef.current) {
+      const container = containerRef.current;
+      container.addEventListener("wheel", handleWheel, { passive: false });
+      return () => {
+        container.removeEventListener("wheel", handleWheel);
+      };
     }
   }, [isOpen, handleWheel]);
+
+  // Set up mouse move and up listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   // Handle backdrop click to close
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const backdrop = e.currentTarget;
     
-    // Close if clicking on backdrop (not on image)
-    if (target === backdrop) {
+    // Close if clicking on backdrop (not on image) and not dragging
+    if (target === backdrop && !isDragging) {
       onClose();
     }
   };
@@ -125,6 +276,7 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
 
   return (
     <div
+      ref={containerRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
     >
@@ -132,25 +284,29 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
         ref={imageRef}
         src={imageSrc}
         alt={imageAlt}
-        className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl select-none"
+        className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl select-none touch-none"
         style={{
-          transform: `scale(${scale})`,
+          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
           transformOrigin: "center center",
-          transition: "transform 0.15s ease-out",
+          transition: isDragging ? "none" : "transform 0.15s ease-out",
         }}
         draggable={false}
         onClick={(e) => {
           e.stopPropagation();
         }}
+        onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseEnter={(e) => {
-          // Show zoom cursor only when hovering over image
-          e.currentTarget.style.cursor = scale > 1 ? "zoom-out" : "zoom-in";
+          // Show appropriate cursor
+          if (scale > 1) {
+            e.currentTarget.style.cursor = isDragging ? "grabbing" : "grab";
+          } else {
+            e.currentTarget.style.cursor = "zoom-in";
+          }
         }}
         onMouseLeave={(e) => {
-          // Remove cursor when not hovering
           e.currentTarget.style.cursor = "default";
         }}
       />
