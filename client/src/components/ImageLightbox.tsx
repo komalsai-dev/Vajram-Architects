@@ -172,16 +172,20 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
   // Touch handlers for pinch zoom and drag (mobile)
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      // Pinch zoom
+      // Pinch zoom - prevent default to avoid scrolling
       e.preventDefault();
+      e.stopPropagation();
+      
       const distance = getTouchDistance(e.touches[0], e.touches[1]);
       const center = getTouchCenter(e.touches[0], e.touches[1]);
       
       if (containerRef.current) {
         const container = containerRef.current;
-        const rect = container.getBoundingClientRect();
-        const centerX = center.x - rect.left - rect.width / 2;
-        const centerY = center.y - rect.top - rect.height / 2;
+        const containerRect = container.getBoundingClientRect();
+        
+        // Calculate center relative to container center
+        const centerX = center.x - containerRect.left - containerRect.width / 2;
+        const centerY = center.y - containerRect.top - containerRect.height / 2;
         
         setLastTouchCenter({ x: centerX, y: centerY });
       }
@@ -189,19 +193,47 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       setLastTouchDistance(distance);
       setLastPinchScale(scale);
       setIsDragging(false);
-    } else if (e.touches.length === 1 && scale > 1) {
-      // Single touch drag
-      e.preventDefault();
-      setIsDragging(true);
-      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-      setInitialPosition(position);
+    } else if (e.touches.length === 1) {
+      if (scale > 1) {
+        // Single touch drag when zoomed
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+        setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+        setInitialPosition(position);
+      } else {
+        // Single touch when not zoomed - allow default (for closing on backdrop)
+        setIsDragging(false);
+      }
     }
   }, [scale, position]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouchDistance !== null && lastTouchCenter) {
+    if (e.touches.length === 2) {
       // Pinch zoom
       e.preventDefault();
+      e.stopPropagation();
+      
+      // If we just switched from 1 to 2 touches, initialize pinch
+      if (lastTouchDistance === null || lastTouchCenter === null) {
+        const distance = getTouchDistance(e.touches[0], e.touches[1]);
+        const center = getTouchCenter(e.touches[0], e.touches[1]);
+        
+        if (containerRef.current) {
+          const container = containerRef.current;
+          const containerRect = container.getBoundingClientRect();
+          const centerX = center.x - containerRect.left - containerRect.width / 2;
+          const centerY = center.y - containerRect.top - containerRect.height / 2;
+          
+          setLastTouchCenter({ x: centerX, y: centerY });
+        }
+        
+        setLastTouchDistance(distance);
+        setLastPinchScale(scale);
+        setIsDragging(false);
+        return;
+      }
+      
       const distance = getTouchDistance(e.touches[0], e.touches[1]);
       const scaleChange = distance / lastTouchDistance;
       let newScale = lastPinchScale * scaleChange;
@@ -219,26 +251,56 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       setPosition(constrained);
       setScale(newScale);
       setLastTouchDistance(distance);
-    } else if (e.touches.length === 1 && isDragging && scale > 1) {
-      // Single touch drag
+    } else if (e.touches.length === 1 && scale > 1) {
+      // Single touch drag when zoomed
       e.preventDefault();
-      const deltaX = e.touches[0].clientX - dragStart.x;
-      const deltaY = e.touches[0].clientY - dragStart.y;
-      const newX = initialPosition.x + deltaX;
-      const newY = initialPosition.y + deltaY;
+      e.stopPropagation();
       
-      const constrained = constrainPosition(newX, newY, scale);
-      setPosition(constrained);
+      // If we just switched from 2 to 1 touches, initialize drag
+      if (lastTouchDistance !== null) {
+        setLastTouchDistance(null);
+        setLastTouchCenter(null);
+        setIsDragging(true);
+        setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+        setInitialPosition(position);
+        return;
+      }
+      
+      if (isDragging) {
+        const deltaX = e.touches[0].clientX - dragStart.x;
+        const deltaY = e.touches[0].clientY - dragStart.y;
+        const newX = initialPosition.x + deltaX;
+        const newY = initialPosition.y + deltaY;
+        
+        const constrained = constrainPosition(newX, newY, scale);
+        setPosition(constrained);
+      }
     }
   }, [lastTouchDistance, lastTouchCenter, lastPinchScale, position, isDragging, scale, dragStart, initialPosition, constrainPosition]);
 
-  const handleTouchEnd = useCallback(() => {
-    setLastTouchDistance(null);
-    setLastTouchCenter(null);
-    setIsDragging(false);
-  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    // If we had 2 touches and now have 0, the pinch ended
+    if (e.touches.length === 0 && lastTouchDistance !== null) {
+      setLastTouchDistance(null);
+      setLastTouchCenter(null);
+    }
+    // If we had 1 touch and now have 0, the drag ended
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+    }
+    // If we still have 1 touch after having 2, transition to drag
+    if (e.touches.length === 1 && lastTouchDistance !== null) {
+      setLastTouchDistance(null);
+      setLastTouchCenter(null);
+      if (scale > 1) {
+        setIsDragging(true);
+        setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+        setInitialPosition(position);
+      }
+    }
+  }, [lastTouchDistance, scale, position]);
 
-  // Set up wheel event listener for zoom
+  // Set up wheel event listener for zoom (desktop)
   useEffect(() => {
     if (isOpen && containerRef.current) {
       const container = containerRef.current;
@@ -248,6 +310,7 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       };
     }
   }, [isOpen, handleWheel]);
+
 
   // Set up mouse move and up listeners for dragging
   useEffect(() => {
@@ -261,13 +324,25 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // Handle backdrop click to close
+  // Handle backdrop click to close (desktop and mobile)
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const backdrop = e.currentTarget;
     
     // Close if clicking on backdrop (not on image) and not dragging
-    if (target === backdrop && !isDragging) {
+    if (target === backdrop && !isDragging && scale === 1) {
+      onClose();
+    }
+  };
+
+  // Handle backdrop touch to close (mobile)
+  const handleBackdropTouch = (e: React.TouchEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const backdrop = e.currentTarget;
+    
+    // Only handle single touch on backdrop when not zoomed
+    if (e.touches.length === 1 && target === backdrop && !isDragging && lastTouchDistance === null && scale === 1) {
+      // Don't prevent default here - let it bubble to allow image handlers to work
       onClose();
     }
   };
@@ -279,16 +354,20 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       ref={containerRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
+      onTouchStart={handleBackdropTouch}
     >
       <img
         ref={imageRef}
         src={imageSrc}
         alt={imageAlt}
-        className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl select-none touch-none"
+        className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl select-none"
         style={{
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
           transformOrigin: "center center",
-          transition: isDragging ? "none" : "transform 0.15s ease-out",
+          transition: isDragging || lastTouchDistance !== null ? "none" : "transform 0.15s ease-out",
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
         }}
         draggable={false}
         onClick={(e) => {
