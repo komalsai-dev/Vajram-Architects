@@ -1,5 +1,4 @@
-import { getClientName, getAllClientIds } from "./clients-data";
-import { getAllLocations } from "./locations-data";
+import type { Location, Project } from "./types";
 
 export interface SearchResult {
   id: string;
@@ -8,7 +7,11 @@ export interface SearchResult {
   link: string;
 }
 
-export function searchWebsite(query: string): SearchResult[] {
+export function searchWebsite(
+  query: string,
+  locations: Location[],
+  projects: Project[],
+): SearchResult[] {
   const searchTerm = query.toLowerCase().trim();
   
   if (!searchTerm) {
@@ -18,29 +21,25 @@ export function searchWebsite(query: string): SearchResult[] {
   const results: SearchResult[] = [];
 
   // Search locations
-  const locations = getAllLocations();
-  locations.forEach((locationId) => {
-    const locationName = locationId.charAt(0).toUpperCase() + locationId.slice(1);
-    if (locationName.toLowerCase().includes(searchTerm)) {
+  locations.forEach((location) => {
+    if (location.name.toLowerCase().includes(searchTerm)) {
       results.push({
-        id: `location-${locationId}`,
-        title: locationName,
+        id: `location-${location.id}`,
+        title: location.name,
         type: "location",
-        link: `/#${locationId}`,
+        link: `/#${location.id}`,
       });
     }
   });
 
   // Search clients
-  const clientIds = getAllClientIds();
-  clientIds.forEach((clientId) => {
-    const clientName = getClientName(clientId);
-    if (clientName.toLowerCase().includes(searchTerm)) {
+  projects.forEach((project) => {
+    if (project.name.toLowerCase().includes(searchTerm)) {
       results.push({
-        id: `client-${clientId}`,
-        title: clientName,
+        id: `client-${project.id}`,
+        title: project.name,
         type: "client",
-        link: `/client/${clientId}`,
+        link: `/client/${project.id}`,
       });
     }
   });

@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { getAllLocations } from "@/lib/locations-data";
-import { getAllLocationCoordinates, getLocationCoordinates } from "@/lib/locations-coordinates";
+import { useQuery } from "@tanstack/react-query";
+import { getAllLocations, getLocationData } from "@/lib/locations-data";
+import { getLocationCoordinates } from "@/lib/locations-coordinates";
 import { getClientIdsByLocation } from "@/lib/clients-data";
+import { apiUrl } from "@/lib/api";
+import type { Location, Project } from "@/lib/types";
 
 // Fix for default marker icon in React/Vite - using CDN for reliability
 const DefaultIcon = L.icon({
@@ -24,6 +27,57 @@ interface ProjectsMapProps {
 }
 
 export function ProjectsMap({ className = "" }: ProjectsMapProps) {
+  const locationsQuery = useQuery<Location[]>({
+    queryKey: [apiUrl("/api/locations")],
+  });
+  const projectsQuery = useQuery<Project[]>({
+    queryKey: [apiUrl("/api/projects")],
+  });
+
+  const fallbackLocationKeys = getAllLocations();
+  const fallbackLocations = fallbackLocationKeys.map((locationKey) => {
+    const locationData = getLocationData(
+      locationKey.charAt(0).toUpperCase() + locationKey.slice(1)
+    );
+    return {
+      id: locationKey,
+      name: locationData.name,
+      stateOrCountry: locationData.stateOrCountry,
+    };
+  });
+  const locations = locationsQuery.data?.length
+    ? locationsQuery.data
+    : fallbackLocations;
+
+  const projects = projectsQuery.data?.length ? projectsQuery.data : [];
+
+  const locationsWithCounts = useMemo(() => {
+    return locations
+      .map((location) => {
+        const coords = getLocationCoordinates(location.id);
+        if (!coords) {
+          return null;
+        }
+        const clientCount = projects.length
+          ? projects.filter((project) => project.locationId === location.id)
+              .length
+          : getClientIdsByLocation(location.id).length;
+        return {
+          ...coords,
+          name: location.name,
+          clientCount,
+          key: location.id,
+        };
+      })
+      .filter((loc) => loc !== null) as Array<{
+      name: string;
+      lat: number;
+      lng: number;
+      clientCount: number;
+      key: string;
+    }>;
+  }, [locations, projects]);
+
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -58,27 +112,6 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
     if (!mapRef.current) return;
 
     try {
-      // Get all locations with their client counts
-      const locations = getAllLocations();
-      
-      // Calculate client counts for each location
-      const locationsWithCounts = locations.map((locationKey) => {
-        const coords = getLocationCoordinates(locationKey);
-        if (!coords) return null;
-        const clientIds = getClientIdsByLocation(locationKey);
-        return {
-          ...coords,
-          clientCount: clientIds.length,
-          key: locationKey,
-        };
-      }).filter((loc) => loc !== null) as Array<{
-        name: string;
-        lat: number;
-        lng: number;
-        clientCount: number;
-        key: string;
-      }>;
-
       // Calculate center point (average of all locations)
       if (locationsWithCounts.length === 0) return;
 
@@ -157,7 +190,7 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
       }
       markersRef.current = [];
     };
-  }, []);
+  }, [locationsWithCounts]);
 
   // Invalidate map size when it becomes visible (for animation)
   useEffect(() => {

@@ -1,10 +1,13 @@
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/Hero";
 import { ArticleGrid } from "@/components/ArticleGrid";
 import { ProjectsMap } from "@/components/ProjectsMap";
 import { getLocationData } from "@/lib/locations-data";
+import { apiUrl } from "@/lib/api";
+import type { Location, Project } from "@/lib/types";
 
 export default function Home() {
   // Restore scroll position when returning from portfolio page
@@ -48,16 +51,52 @@ export default function Home() {
     { id: "hero-4", image: "https://res.cloudinary.com/da9ppibpk/image/upload/v1768015019/Mr.G_Narender_Reddy_Landscape_Renders_42_-_Photo_ncdgbz.jpg", title: "Mr.G Narender Reddy Landscape" },
   ];
 
-  // Location-based data
-  const gunturData = getLocationData("Guntur");
-  const hyderabadData = getLocationData("Hyderabad");
-  const siddipetData = getLocationData("Siddipet");
-  const suryapetData = getLocationData("Suryapet");
-  const nirmalData = getLocationData("Nirmal");
-  const irelandData = getLocationData("Ireland");
+  const locationsQuery = useQuery<Location[]>({
+    queryKey: [apiUrl("/api/locations")],
+  });
+  const projectsQuery = useQuery<Project[]>({
+    queryKey: [apiUrl("/api/projects")],
+  });
+
+  const apiLocations = locationsQuery.data || [];
+  const apiProjects = projectsQuery.data || [];
+  const hasApiProjects = apiProjects.length > 0 && apiLocations.length > 0;
+
+  const fallbackLocations = [
+    getLocationData("Guntur"),
+    getLocationData("Hyderabad"),
+    getLocationData("Siddipet"),
+    getLocationData("Suryapet"),
+    getLocationData("Nirmal"),
+    getLocationData("Ireland"),
+  ].map((location) => ({
+    ...location,
+    clients: location.clients.slice(0, 1),
+  }));
+
+  const locationDataList = hasApiProjects
+    ? apiLocations.map((location) => {
+        const locationProjects = apiProjects.filter(
+          (project) => project.locationId === location.id
+        );
+        return {
+          name: location.name,
+          stateOrCountry: location.stateOrCountry || "",
+          clients: locationProjects.map((project) => ({
+            id: project.id,
+            image:
+              project.coverImageUrl ||
+              project.images?.[0]?.url ||
+              "",
+            title: project.name,
+            link: `/client/${project.id}`,
+          })),
+        };
+      })
+    : fallbackLocations;
 
   // Convert location clients to article format for ArticleGrid component
-  const convertToArticles = (locationData: typeof gunturData) => {
+  const convertToArticles = (locationData: typeof fallbackLocations[number]) => {
     const categoryText = locationData.stateOrCountry 
       ? `${locationData.name} (${locationData.stateOrCountry})`
       : locationData.name;
@@ -81,42 +120,15 @@ export default function Home() {
           <Hero slides={heroSlides} />
         </section>
         
-            <ArticleGrid 
-              title="Guntur" 
-              stateOrCountry={gunturData.stateOrCountry}
-              articles={convertToArticles(gunturData)}
-              isFirstSection={true}
-            />
-
-            <ArticleGrid 
-              title="Hyderabad" 
-              stateOrCountry={hyderabadData.stateOrCountry}
-              articles={convertToArticles(hyderabadData)}
-            />
-
-            <ArticleGrid 
-              title="Siddipet" 
-              stateOrCountry={siddipetData.stateOrCountry}
-              articles={convertToArticles(siddipetData)}
-            />
-
-            <ArticleGrid 
-              title="Suryapet" 
-              stateOrCountry={suryapetData.stateOrCountry}
-              articles={convertToArticles(suryapetData)}
-            />
-
-            <ArticleGrid 
-              title="Nirmal" 
-              stateOrCountry={nirmalData.stateOrCountry}
-              articles={convertToArticles(nirmalData)}
-            />
-
-            <ArticleGrid 
-              title="Ireland" 
-              stateOrCountry={irelandData.stateOrCountry}
-              articles={convertToArticles(irelandData)}
-            />
+            {locationDataList.map((locationData, index) => (
+              <ArticleGrid 
+                key={locationData.name}
+                title={locationData.name}
+                stateOrCountry={locationData.stateOrCountry}
+                articles={convertToArticles(locationData)}
+                isFirstSection={index === 0}
+              />
+            ))}
 
         <ProjectsMap />
       </main>

@@ -1,18 +1,27 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { getClientImages, getClientName } from "@/lib/clients-data";
+import { apiUrl } from "@/lib/api";
+import type { Project } from "@/lib/types";
 
 interface ClientPortfolioProps {
   clientId: string;
 }
 
 export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
-  const images = getClientImages(clientId);
-  const clientName = getClientName(clientId);
+  const projectQuery = useQuery<Project>({
+    queryKey: [apiUrl(`/api/projects/${clientId}`)],
+  });
+  const apiProject = projectQuery.data;
+  const fallbackImages = getClientImages(clientId);
+  const fallbackName = getClientName(clientId);
+  const images = apiProject?.images?.length ? apiProject.images : fallbackImages;
+  const clientName = apiProject?.name || fallbackName;
   const [showAll, setShowAll] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);

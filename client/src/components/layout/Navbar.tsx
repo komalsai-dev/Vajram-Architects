@@ -1,20 +1,58 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Search, Menu, X } from "lucide-react";
 import { searchWebsite, type SearchResult } from "@/lib/search-data";
 import { getLocationData } from "@/lib/locations-data";
 import { getClientImages } from "@/lib/clients-data";
-
-const locations = [
-  { name: "Guntur", id: "guntur" },
-  { name: "Hyderabad", id: "hyderabad" },
-  { name: "Siddipet", id: "siddipet" },
-  { name: "Suryapet", id: "suryapet" },
-  { name: "Nirmal", id: "nirmal" },
-  { name: "Ireland", id: "ireland" },
-];
+import { apiUrl } from "@/lib/api";
+import type { Location, Project } from "@/lib/types";
 
 export function Navbar() {
+  const locationsQuery = useQuery<Location[]>({
+    queryKey: [apiUrl("/api/locations")],
+  });
+  const projectsQuery = useQuery<Project[]>({
+    queryKey: [apiUrl("/api/projects")],
+  });
+  const fallbackLocations: Location[] = [
+    { name: "Guntur", id: "guntur", stateOrCountry: "Andhra Pradesh" },
+    { name: "Hyderabad", id: "hyderabad", stateOrCountry: "Telangana" },
+    { name: "Siddipet", id: "siddipet", stateOrCountry: "Telangana" },
+    { name: "Suryapet", id: "suryapet", stateOrCountry: "Telangana" },
+    { name: "Nirmal", id: "nirmal", stateOrCountry: "Telangana" },
+    { name: "Ireland", id: "ireland", stateOrCountry: "Ireland" },
+  ];
+  const locations = locationsQuery.data?.length
+    ? locationsQuery.data
+    : fallbackLocations;
+
+  const fallbackProjects = useMemo<Project[]>(() => {
+    return fallbackLocations.reduce<Project[]>((acc, location) => {
+      const locationData = getLocationData(location.name);
+      const firstClient = locationData.clients[0];
+      if (!firstClient) {
+        return acc;
+      }
+      const images = getClientImages(firstClient.id).map((image, index) => ({
+        id: `${firstClient.id}-${index}`,
+        url: image.url,
+        label: image.label,
+      }));
+      acc.push({
+        id: firstClient.id,
+        name: firstClient.title,
+        locationId: location.id,
+        coverImageUrl: firstClient.image || "",
+        images,
+      });
+      return acc;
+    }, []);
+  }, [fallbackLocations]);
+
+  const projects = projectsQuery.data?.length
+    ? projectsQuery.data
+    : fallbackProjects;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,13 +83,18 @@ export function Navbar() {
 
   // Get project images for a location (first 3 images)
   const getLocationProjectImages = (locationId: string): string[] => {
-    const locationData = getLocationData(locationId);
-    if (locationData.clients.length > 0) {
-      const clientId = locationData.clients[0].id;
-      const images = getClientImages(clientId);
-      return images.slice(0, 3).map(img => img.url); // Return first 3 image URLs
+    const locationProjects = projects.filter(
+      (project) => project.locationId === locationId
+    );
+    const firstProject = locationProjects[0];
+    if (!firstProject) {
+      return [];
     }
-    return [];
+    const images = firstProject.images || [];
+    if (images.length === 0 && firstProject.coverImageUrl) {
+      return [firstProject.coverImageUrl];
+    }
+    return images.slice(0, 3).map((img) => img.url);
   };
 
   const handleSearch = () => {
@@ -71,7 +114,7 @@ export function Navbar() {
     setSearchQuery(query);
     
     if (query.trim()) {
-      const results = searchWebsite(query);
+      const results = searchWebsite(query, locations, projects);
       setSearchResults(results);
     } else {
       setSearchResults([]);
@@ -282,8 +325,10 @@ export function Navbar() {
                             </h3>
                             <div className="grid grid-cols-3 gap-4">
                               {getLocationProjectImages(hoveredLocation).map((image, index) => {
-                                const locationData = getLocationData(hoveredLocation);
-                                const clientId = locationData.clients[0]?.id || "";
+                                const locationProject = projects.find(
+                                  (project) => project.locationId === hoveredLocation
+                                );
+                                const clientId = locationProject?.id || "";
                                 return (
                                   <Link
                                     key={index}
