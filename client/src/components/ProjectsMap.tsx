@@ -49,7 +49,29 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
     ? locationsQuery.data
     : fallbackLocations;
 
-  const projects = projectsQuery.data?.length ? projectsQuery.data : [];
+  const fallbackProjects = useMemo(() => {
+    return fallbackLocationKeys.flatMap((locationKey) => {
+      const locationData = getLocationData(
+        locationKey.charAt(0).toUpperCase() + locationKey.slice(1)
+      );
+      const firstClient = locationData.clients[0];
+      if (!firstClient) {
+        return [];
+      }
+      return [
+        {
+          id: firstClient.id,
+          name: firstClient.title,
+          locationId: locationKey,
+        },
+      ];
+    });
+  }, [fallbackLocationKeys]);
+
+  const projects = useMemo(() => {
+    const apiProjects = projectsQuery.data || [];
+    return [...fallbackProjects, ...apiProjects];
+  }, [fallbackProjects, projectsQuery.data]);
 
   const locationsWithCounts = useMemo(() => {
     return locations
@@ -109,46 +131,72 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
   }, []);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current) {
+      return;
+    }
 
     try {
-      // Calculate center point (average of all locations)
-      if (locationsWithCounts.length === 0) return;
-
-      const avgLat = locationsWithCounts.reduce((sum, loc) => sum + loc.lat, 0) / locationsWithCounts.length;
-      const avgLng = locationsWithCounts.reduce((sum, loc) => sum + loc.lng, 0) / locationsWithCounts.length;
-
-      // Initialize map
-      // Disable scrollWheelZoom so page scrolling works, but keep all other interactions
+      // Initialize map once
       const map = L.map(mapRef.current, {
-        center: [avgLat, avgLng],
+        center: [20.5937, 78.9629],
         zoom: 5,
         zoomControl: true,
-        scrollWheelZoom: false, // Disable scroll-to-zoom to allow page scrolling
-        doubleClickZoom: true, // Allow double-click to zoom
-        boxZoom: true, // Allow box zoom (shift+drag)
-        keyboard: true, // Allow keyboard navigation
-        dragging: true, // Allow panning by dragging
-        touchZoom: true, // Allow pinch-to-zoom on touch devices
+        scrollWheelZoom: false,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: true,
+        dragging: true,
+        touchZoom: true,
       });
 
-      // Add OpenStreetMap tile layer
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '', // Remove attribution watermark
+        attribution: "",
         maxZoom: 19,
       }).addTo(map);
-      
-      // Hide attribution control
-      map.attributionControl.setPrefix('');
+
+      map.attributionControl.setPrefix("");
       map.attributionControl.remove();
 
-      // Add markers for each location
-      const markers: L.Marker[] = [];
-      locationsWithCounts.forEach((location) => {
-        const marker = L.marker([location.lat, location.lng]).addTo(map);
+      mapInstanceRef.current = map;
+    } catch (error) {
+      console.error("Error initializing map:", error);
+    }
 
-        // Create popup content
-        const popupContent = `
+    return () => {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (error) {
+          console.warn("Map cleanup error:", error);
+        }
+        mapInstanceRef.current = null;
+      }
+      markersRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapRef.current || !mapRef.current.isConnected) {
+      return;
+    }
+    if (!map._container || locationsWithCounts.length === 0) {
+      return;
+    }
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => {
+      if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    });
+    markersRef.current = [];
+
+    const markers: L.Marker[] = [];
+    locationsWithCounts.forEach((location) => {
+      const marker = L.marker([location.lat, location.lng]).addTo(map);
+      const popupContent = `
           <div style="padding: 8px; min-width: 150px;">
             <h3 style="margin: 0 0 8px 0; font-weight: bold; font-size: 16px; color: #000;">
               ${location.name}
@@ -158,38 +206,22 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
             </p>
           </div>
         `;
+      marker.bindPopup(popupContent);
+      markers.push(marker);
+    });
 
-        marker.bindPopup(popupContent);
-        markers.push(marker);
-      });
+    markersRef.current = markers;
 
-      mapInstanceRef.current = map;
-      markersRef.current = markers;
-
-      // Fit map to show all markers
-      if (markers.length > 0) {
-        const group = new L.FeatureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.1));
-      }
-
-      // Invalidate size after a short delay to ensure map renders properly
-      setTimeout(() => {
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.invalidateSize();
-        }
-      }, 100);
-    } catch (error) {
-      console.error("Error initializing map:", error);
+    if (markers.length > 0) {
+      const group = new L.FeatureGroup(markers);
+      map.fitBounds(group.getBounds().pad(0.1));
     }
 
-    // Cleanup
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+    setTimeout(() => {
+      if (mapInstanceRef.current && mapInstanceRef.current._container) {
+        mapInstanceRef.current.invalidateSize();
       }
-      markersRef.current = [];
-    };
+    }, 100);
   }, [locationsWithCounts]);
 
   // Invalidate map size when it becomes visible (for animation)

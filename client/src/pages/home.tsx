@@ -60,7 +60,6 @@ export default function Home() {
 
   const apiLocations = locationsQuery.data || [];
   const apiProjects = projectsQuery.data || [];
-  const hasApiProjects = apiProjects.length > 0 && apiLocations.length > 0;
 
   const fallbackLocations = [
     getLocationData("Guntur"),
@@ -70,30 +69,54 @@ export default function Home() {
     getLocationData("Nirmal"),
     getLocationData("Ireland"),
   ].map((location) => ({
-    ...location,
+    id: location.name.toLowerCase(),
+    name: location.name,
+    stateOrCountry: location.stateOrCountry,
     clients: location.clients.slice(0, 1),
   }));
 
-  const locationDataList = hasApiProjects
-    ? apiLocations.map((location) => {
-        const locationProjects = apiProjects.filter(
-          (project) => project.locationId === location.id
-        );
-        return {
+  const locationDataList = (() => {
+    const locationMap = new Map<string, typeof fallbackLocations[number]>();
+    fallbackLocations.forEach((location) => {
+      locationMap.set(location.id, { ...location });
+    });
+
+    apiLocations.forEach((location) => {
+      const existing = locationMap.get(location.id);
+      if (existing) {
+        existing.name = location.name || existing.name;
+        existing.stateOrCountry =
+          location.stateOrCountry || existing.stateOrCountry;
+      } else {
+        locationMap.set(location.id, {
+          id: location.id,
           name: location.name,
           stateOrCountry: location.stateOrCountry || "",
-          clients: locationProjects.map((project) => ({
-            id: project.id,
-            image:
-              project.coverImageUrl ||
-              project.images?.[0]?.url ||
-              "",
-            title: project.name,
-            link: `/client/${project.id}`,
-          })),
-        };
-      })
-    : fallbackLocations;
+          clients: [],
+        });
+      }
+    });
+
+    const apiClientsByLocation = new Map<string, typeof fallbackLocations[number]["clients"]>();
+    apiProjects.forEach((project) => {
+      const existing = apiClientsByLocation.get(project.locationId) || [];
+      existing.push({
+        id: project.id,
+        image: project.coverImageUrl || project.images?.[0]?.url || "",
+        title: project.name,
+        link: `/client/${project.id}`,
+      });
+      apiClientsByLocation.set(project.locationId, existing);
+    });
+
+    return Array.from(locationMap.values()).map((location) => ({
+      ...location,
+      clients: [
+        ...(location.clients || []),
+        ...(apiClientsByLocation.get(location.id) || []),
+      ],
+    }));
+  })();
 
   // Convert location clients to article format for ArticleGrid component
   const convertToArticles = (locationData: typeof fallbackLocations[number]) => {
@@ -121,13 +144,13 @@ export default function Home() {
         </section>
         
             {locationDataList.map((locationData, index) => (
-              <ArticleGrid 
+            <ArticleGrid 
                 key={locationData.name}
                 title={locationData.name}
                 stateOrCountry={locationData.stateOrCountry}
                 articles={convertToArticles(locationData)}
                 isFirstSection={index === 0}
-              />
+            />
             ))}
 
         <ProjectsMap />

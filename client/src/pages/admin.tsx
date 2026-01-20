@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Country, State, City } from "country-state-city";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -55,6 +56,8 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const [adminPassword, setAdminPassword] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("vajramAdminPassword");
@@ -106,14 +109,41 @@ export default function Admin() {
     }, []);
   }, []);
 
-  const locations = locationsQuery.data?.length
-    ? locationsQuery.data
-    : fallbackLocations;
-  const projects = projectsQuery.data?.length
-    ? projectsQuery.data
-    : fallbackProjects;
+  const locations = useMemo(() => {
+    const apiLocations = locationsQuery.data || [];
+    const merged = new Map<string, Location>();
+    fallbackLocations.forEach((location) => {
+      merged.set(location.id, { ...location });
+    });
+    apiLocations.forEach((location) => {
+      const existing = merged.get(location.id);
+      if (existing) {
+        merged.set(location.id, {
+          ...existing,
+          name: location.name || existing.name,
+          stateOrCountry:
+            location.stateOrCountry || existing.stateOrCountry || "",
+        });
+      } else {
+        merged.set(location.id, location);
+      }
+    });
+    return Array.from(merged.values());
+  }, [fallbackLocations, locationsQuery.data]);
 
-  const countries = useMemo(() => Country.getAllCountries(), []);
+  const projects = useMemo(() => {
+    const apiProjects = projectsQuery.data || [];
+    return [...fallbackProjects, ...apiProjects];
+  }, [fallbackProjects, projectsQuery.data]);
+
+  const countries = useMemo(() => {
+    const allCountries = Country.getAllCountries();
+    const india = allCountries.find((country) => country.name === "India");
+    const remaining = allCountries
+      .filter((country) => country.name !== "India")
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return india ? [india, ...remaining] : remaining;
+  }, []);
   const [newProjectForm, setNewProjectForm] =
     useState<AdminProjectForm>(emptyProjectForm);
   const [editProjectForm, setEditProjectForm] =
@@ -136,6 +166,14 @@ export default function Admin() {
   );
   const [selectedState, setSelectedState] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [isSavingProject, setIsSavingProject] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
+    null
+  );
+  const [confirmDeleteProject, setConfirmDeleteProject] =
+    useState<Project | null>(null);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId),
@@ -314,20 +352,27 @@ export default function Admin() {
     );
   }, [activeProject, countries, locations]);
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
     const trimmed = passwordInput.trim();
     if (!trimmed) {
       return;
     }
-    sessionStorage.setItem("vajramAdminPassword", trimmed);
-    setAdminPassword(trimmed);
-    setPasswordInput("");
+    try {
+      await adminRequest("/api/admin/verify", trimmed, { method: "GET" });
+      sessionStorage.setItem("vajramAdminPassword", trimmed);
+      setAdminPassword(trimmed);
+      setPasswordInput("");
+      setLoginError("");
+    } catch (error) {
+      setLoginError("Invalid admin password.");
+    }
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem("vajramAdminPassword");
     setAdminPassword("");
     setPasswordInput("");
+    setLoginError("");
   };
 
   const ensureLocationExists = async (
@@ -391,11 +436,14 @@ export default function Admin() {
       }
       return created;
     },
-    onSuccess: () => {
-      setNewProjectForm(emptyProjectForm);
+    onSuccess: (created) => {
+      if (created) {
+        setActiveProjectId(created.id);
+      }
       setNewProjectFiles([]);
       setNewProjectLabel("Exterior");
       queryClient.invalidateQueries({ queryKey: [apiUrl("/api/projects")] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/locations")] });
     },
   });
 
@@ -426,6 +474,7 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [apiUrl("/api/projects")] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/locations")] });
     },
   });
 
@@ -439,6 +488,7 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [apiUrl("/api/projects")] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/locations")] });
     },
   });
 
@@ -494,6 +544,78 @@ export default function Admin() {
     setNewProjectFiles(files);
   };
 
+  const waitForMinDelay = async <T,>(task: Promise<T>) => {
+    const [result] = await Promise.all([
+      task,
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    return result;
+  };
+
+  const handleAddProject = async () => {
+    if (isAddingProject) {
+      return;
+    }
+    setIsAddingProject(true);
+    try {
+      await waitForMinDelay(createProjectMutation.mutateAsync());
+    } finally {
+      setIsAddingProject(false);
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (isSavingProject || !activeProjectId) {
+      return;
+    }
+    setIsSavingProject(true);
+    try {
+      await waitForMinDelay(
+        updateProjectMutation.mutateAsync().then(async () => {
+          if (uploadFiles.length > 0) {
+            await uploadImagesMutation.mutateAsync();
+          }
+        })
+      );
+    } finally {
+      setIsSavingProject(false);
+    }
+  };
+
+  const handleUploadImages = async () => {
+    if (isUploadingImages || uploadFiles.length === 0) {
+      return;
+    }
+    setIsUploadingImages(true);
+    try {
+      await waitForMinDelay(uploadImagesMutation.mutateAsync());
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleDeleteProject = (project: Project) => {
+    if (deletingProjectId) {
+      return;
+    }
+    setConfirmDeleteProject(project);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteProject || deletingProjectId) {
+      return;
+    }
+    setDeletingProjectId(confirmDeleteProject.id);
+    try {
+      await waitForMinDelay(
+        deleteProjectMutation.mutateAsync(confirmDeleteProject.id)
+      );
+    } finally {
+      setDeletingProjectId(null);
+      setConfirmDeleteProject(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       <main
@@ -503,7 +625,7 @@ export default function Admin() {
             : "container mx-auto px-3 sm:px-4 min-h-screen flex items-center justify-center py-10 sm:py-12"
         }
       >
-        <div className={adminPassword ? "" : "w-full max-w-xl text-center"}>
+        <div className={adminPassword ? "" : "w-full max-w-md text-center"}>
           <h1
             className={
               adminPassword
@@ -515,19 +637,36 @@ export default function Admin() {
           </h1>
 
           {!adminPassword ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 sm:p-8">
+            <div className="bg-gray-950 border border-gray-800 rounded-lg p-5 sm:p-6 shadow-lg">
               <h2 className="text-lg font-semibold mb-4">Admin Login</h2>
               <div className="flex flex-col gap-4">
-                <Input
-                  type="password"
-                  placeholder="Enter admin password"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className="cursor-pointer"
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter admin password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="cursor-pointer pr-10 h-10 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {loginError && (
+                  <p className="text-sm text-red-400">{loginError}</p>
+                )}
                 <Button
                   onClick={handleSavePassword}
-                  className="uppercase tracking-widest text-xs cursor-pointer"
+                  className="uppercase tracking-widest text-xs cursor-pointer h-9"
                 >
                   Unlock Admin
                 </Button>
@@ -548,7 +687,7 @@ export default function Admin() {
               </Button>
             </div>
 
-            <section className="bg-gray-900 border border-gray-800 rounded-lg p-6 space-y-10">
+            <section className="bg-gray-950/70 border border-gray-800 rounded-lg p-6 space-y-10 backdrop-blur">
               <div>
                 <h2 className="text-xl font-semibold mb-4">Add New Project</h2>
                 <div className="grid gap-4 md:grid-cols-6 mb-4">
@@ -595,8 +734,9 @@ export default function Admin() {
                       setNewProjectStateIso(iso);
                       setNewProjectCity("");
                     }}
+                    disabled={!newProjectCountryIso || newProjectStates.length === 0}
                   >
-                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
                       <SelectValue placeholder="Select state" />
                     </SelectTrigger>
                     <SelectContent
@@ -614,8 +754,9 @@ export default function Admin() {
                   <Select
                     value={newProjectCity}
                     onValueChange={(value) => setNewProjectCity(value)}
+                    disabled={!newProjectStateIso || newProjectCities.length === 0}
                   >
-                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
                       <SelectValue placeholder="Select city" />
                     </SelectTrigger>
                     <SelectContent
@@ -661,105 +802,20 @@ export default function Admin() {
                       className="text-sm text-gray-300 md:col-span-2 border border-gray-700 rounded-md px-3 py-2 cursor-pointer"
                     />
                     <Button
-                      onClick={() => createProjectMutation.mutate()}
+                      onClick={handleAddProject}
                       disabled={
+                        isAddingProject ||
                         !newProjectForm.name ||
                         !newProjectCity ||
                         newProjectFiles.length === 0
                       }
-                      className="uppercase tracking-widest text-xs cursor-pointer"
+                      className={`uppercase tracking-widest text-xs cursor-pointer ${
+                        isAddingProject ? "animate-pulse" : ""
+                      }`}
                     >
-                      Add Project
+                      {isAddingProject ? "Adding..." : "Add Project"}
                     </Button>
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Existing Projects</h2>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Button
-                    variant={selectedState ? "outline" : "default"}
-                    onClick={() => {
-                      setSelectedState("");
-                      setSelectedCity("");
-                    }}
-                    className="uppercase tracking-widest text-[10px] cursor-pointer"
-                  >
-                    All States
-                  </Button>
-                  {stateOptions.map((state) => (
-                    <Button
-                      key={state}
-                      variant={selectedState === state ? "default" : "outline"}
-                      onClick={() => {
-                        setSelectedState(state);
-                        setSelectedCity("");
-                      }}
-                      className="uppercase tracking-widest text-[10px] cursor-pointer"
-                    >
-                      {state}
-                    </Button>
-                  ))}
-                </div>
-                {selectedState && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Button
-                      variant={selectedCity ? "outline" : "default"}
-                      onClick={() => setSelectedCity("")}
-                      className="uppercase tracking-widest text-[10px] cursor-pointer"
-                    >
-                      All Cities
-                    </Button>
-                    {cityOptions.map((city) => (
-                      <Button
-                        key={city}
-                        variant={selectedCity === city ? "default" : "outline"}
-                        onClick={() => setSelectedCity(city)}
-                        className="uppercase tracking-widest text-[10px] cursor-pointer"
-                      >
-                        {city}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  {filteredProjects.map((project) => {
-                    const location = locationById.get(project.locationId);
-                    const state = location?.stateOrCountry || "Unknown";
-                    const city = location?.name || project.locationId;
-                    return (
-                      <div
-                        key={project.id}
-                        className="flex flex-wrap items-center justify-between gap-3 bg-gray-950 border border-gray-800 rounded-md px-4 py-3"
-                      >
-                        <div>
-                          <p className="font-medium">{project.name}</p>
-                          <p className="text-xs text-gray-400">
-                            {city} · {state} · {project.images?.length || 0} images
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => setActiveProjectId(project.id)}
-                            className="uppercase tracking-widest text-[10px] cursor-pointer"
-                          >
-                            Manage
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              deleteProjectMutation.mutate(project.id)
-                            }
-                            className="uppercase tracking-widest text-[10px] cursor-pointer"
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
@@ -860,10 +916,13 @@ export default function Admin() {
                         className="cursor-pointer"
                       />
                       <Button
-                        onClick={() => updateProjectMutation.mutate()}
-                        className="uppercase tracking-widest text-xs md:col-span-6 cursor-pointer"
+                        onClick={handleSaveChanges}
+                        disabled={isSavingProject}
+                        className={`uppercase tracking-widest text-xs md:col-span-6 cursor-pointer ${
+                          isSavingProject ? "animate-pulse" : ""
+                        }`}
                       >
-                        Save Changes
+                        {isSavingProject ? "Saving..." : "Save Changes"}
                       </Button>
                     </div>
                   </div>
@@ -903,11 +962,13 @@ export default function Admin() {
                         className="text-sm text-gray-300 md:col-span-2 border border-gray-700 rounded-md px-3 py-2 cursor-pointer"
                       />
                       <Button
-                        onClick={() => uploadImagesMutation.mutate()}
-                        disabled={!uploadFiles.length}
-                        className="uppercase tracking-widest text-xs cursor-pointer"
+                        onClick={handleUploadImages}
+                        disabled={isUploadingImages || !uploadFiles.length}
+                        className={`uppercase tracking-widest text-xs cursor-pointer ${
+                          isUploadingImages ? "animate-pulse" : ""
+                        }`}
                       >
-                        Upload Images
+                        {isUploadingImages ? "Uploading..." : "Upload Images"}
                       </Button>
                     </div>
                   </div>
@@ -920,7 +981,7 @@ export default function Admin() {
                       {(activeProject.images || []).map((image: ProjectImage) => (
                         <div
                           key={image.id}
-                          className="flex flex-wrap items-center justify-between gap-3 bg-gray-950 border border-gray-800 rounded-md px-4 py-3"
+                          className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
                         >
                           <div className="flex items-center gap-3">
                             <img
@@ -953,11 +1014,132 @@ export default function Admin() {
                   </div>
                 </>
               )}
+
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Existing Projects</h2>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button
+                    variant={selectedState ? "outline" : "default"}
+                    onClick={() => {
+                      setSelectedState("");
+                      setSelectedCity("");
+                    }}
+                    className="uppercase tracking-widest text-[10px] cursor-pointer"
+                  >
+                    All States
+                  </Button>
+                  {stateOptions.map((state) => (
+                    <Button
+                      key={state}
+                      variant={selectedState === state ? "default" : "outline"}
+                      onClick={() => {
+                        setSelectedState(state);
+                        setSelectedCity("");
+                      }}
+                      className="uppercase tracking-widest text-[10px] cursor-pointer"
+                    >
+                      {state}
+                    </Button>
+                  ))}
+                </div>
+                {selectedState && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Button
+                      variant={selectedCity ? "outline" : "default"}
+                      onClick={() => setSelectedCity("")}
+                      className="uppercase tracking-widest text-[10px] cursor-pointer"
+                    >
+                      All Cities
+                    </Button>
+                    {cityOptions.map((city) => (
+                      <Button
+                        key={city}
+                        variant={selectedCity === city ? "default" : "outline"}
+                        onClick={() => setSelectedCity(city)}
+                        className="uppercase tracking-widest text-[10px] cursor-pointer"
+                      >
+                        {city}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {filteredProjects.map((project) => {
+                    const location = locationById.get(project.locationId);
+                    const state = location?.stateOrCountry || "Unknown";
+                    const city = location?.name || project.locationId;
+                    return (
+                      <div
+                        key={project.id}
+                        className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
+                      >
+                        <div>
+                          <p className="font-medium">{project.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {city} · {state} · {project.images?.length || 0} images
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setActiveProjectId(project.id)}
+                            className="uppercase tracking-widest text-[10px] cursor-pointer"
+                          >
+                            Manage
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleDeleteProject(project)}
+                            disabled={deletingProjectId === project.id}
+                            className={`uppercase tracking-widest text-[10px] cursor-pointer ${
+                              deletingProjectId === project.id
+                                ? "animate-pulse"
+                                : ""
+                            }`}
+                          >
+                            {deletingProjectId === project.id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </section>
             </div>
           )}
         </div>
       </main>
+      {confirmDeleteProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-950/90 p-6 text-center backdrop-blur">
+            <h3 className="text-lg font-semibold mb-2">Delete Project</h3>
+            <p className="text-sm text-gray-300 mb-6">
+              Do you want to delete the project "{confirmDeleteProject.name}"?
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDeleteProject(null)}
+                className="uppercase tracking-widest text-xs cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                disabled={!!deletingProjectId}
+                className={`uppercase tracking-widest text-xs cursor-pointer ${
+                  deletingProjectId ? "animate-pulse" : ""
+                }`}
+              >
+                {deletingProjectId ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

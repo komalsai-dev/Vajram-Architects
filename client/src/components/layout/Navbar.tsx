@@ -50,9 +50,10 @@ export function Navbar() {
     }, []);
   }, [fallbackLocations]);
 
-  const projects = projectsQuery.data?.length
-    ? projectsQuery.data
-    : fallbackProjects;
+  const projects = useMemo(() => {
+    const apiProjects = projectsQuery.data || [];
+    return [...fallbackProjects, ...apiProjects];
+  }, [fallbackProjects, projectsQuery.data]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
