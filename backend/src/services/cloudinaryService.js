@@ -7,22 +7,23 @@ cloudinary.config({
   api_secret: config.cloudinary.apiSecret,
 });
 
-export const uploadBuffer = async (buffer, fileName) =>
+export const uploadBuffer = async (buffer, options = {}) =>
   new Promise((resolve, reject) => {
-    const options = {
+    const uploadOptions = {
       folder: config.cloudinary.folder,
       resource_type: "image",
+      ...options,
     };
-    if (fileName) {
-      options.public_id = fileName;
-    }
-    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
-      if (error) {
-        reject(error);
-        return;
+    const stream = cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(result);
       }
-      resolve(result);
-    });
+    );
     stream.end(buffer);
   });
 

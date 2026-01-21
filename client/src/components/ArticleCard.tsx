@@ -1,4 +1,6 @@
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/api";
 import { MapPin } from "lucide-react";
 
 interface ArticleCardProps {
@@ -12,10 +14,17 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ image, category, date, title, link, animationDelay = 0, isVisible = true }: ArticleCardProps) {
+  const queryClient = useQueryClient();
   const handleClick = () => {
     // Store scroll position before navigating to portfolio
     if (typeof window !== "undefined") {
       sessionStorage.setItem("homeScrollPosition", window.scrollY.toString());
+    }
+    if (link.startsWith("/client/")) {
+      const clientId = link.replace("/client/", "");
+      queryClient.prefetchQuery({
+        queryKey: [apiUrl(`/api/projects/${clientId}`)],
+      });
     }
   };
 

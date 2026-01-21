@@ -1,6 +1,8 @@
 import crypto from "crypto";
-import { readStore, writeStore } from "../services/dataStore.js";
-import { deleteImage } from "../services/cloudinaryService.js";
+import { buildCatalogFromCloudinary } from "../services/cloudinaryCatalog.js";
+import { v2 as cloudinary } from "cloudinary";
+import { config } from "../config/env.js";
+import { slugify } from "../utils/slugify.js";
 
 const normalizeProject = (project) => ({
   ...project,
@@ -10,10 +12,10 @@ const normalizeProject = (project) => ({
 export const listProjects = async (req, res, next) => {
   try {
     const { location } = req.query;
-    const store = await readStore();
+    const catalog = await buildCatalogFromCloudinary();
     const projects = location
-      ? store.projects.filter((project) => project.locationId === location)
-      : store.projects;
+      ? catalog.projects.filter((project) => project.locationId === location)
+      : catalog.projects;
     res.json(projects.map(normalizeProject));
   } catch (error) {
     next(error);
@@ -22,8 +24,8 @@ export const listProjects = async (req, res, next) => {
 
 export const getProject = async (req, res, next) => {
   try {
-    const store = await readStore();
-    const project = store.projects.find(
+    const catalog = await buildCatalogFromCloudinary();
+    const project = catalog.projects.find(
       (item) => item.id === req.params.projectId
     );
     if (!project) {
@@ -37,31 +39,21 @@ export const getProject = async (req, res, next) => {
 
 export const createProject = async (req, res, next) => {
   try {
-    const { name, locationId, clientNumber } = req.body;
+    const { name, locationId } = req.body;
     if (!name || !locationId) {
       return res
         .status(400)
         .json({ message: "Project name and locationId are required" });
     }
-    const store = await readStore();
-    const locationExists = store.locations.some(
-      (location) => location.id === locationId
-    );
-    if (!locationExists) {
-      return res.status(400).json({ message: "Location does not exist" });
-    }
     const project = {
-      id: crypto.randomUUID(),
+      id: `${locationId}__${slugify(name)}`,
       name,
       locationId,
-      clientNumber: clientNumber || null,
       coverImageUrl: "",
       images: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    store.projects.push(project);
-    await writeStore(store);
     res.status(201).json(normalizeProject(project));
   } catch (error) {
     next(error);
@@ -70,35 +62,43 @@ export const createProject = async (req, res, next) => {
 
 export const updateProject = async (req, res, next) => {
   try {
-    const store = await readStore();
-    const project = store.projects.find(
-      (item) => item.id === req.params.projectId
+    const {
+      name,
+      locationId,
+      locationName,
+      stateOrCountry,
+      coverImageUrl,
+    } = req.body;
+
+    const tag = `project_${req.params.projectId}`;
+    const resources = await cloudinary.api.resources_by_tag(tag, {
+      max_results: 500,
+      context: true,
+    });
+    const updates = (resources.resources || []).map((resource) =>
+      cloudinary.api.update(resource.public_id, {
+        context: {
+          projectId: req.params.projectId,
+          projectName: name,
+          locationId,
+          locationName,
+          stateOrCountry,
+          label: resource.context?.custom?.label || "Exterior",
+        },
+      })
     );
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
-    }
-    const { name, locationId, clientNumber, coverImageUrl } = req.body;
-    if (locationId) {
-      const locationExists = store.locations.some(
-        (location) => location.id === locationId
-      );
-      if (!locationExists) {
-        return res.status(400).json({ message: "Location does not exist" });
-      }
-      project.locationId = locationId;
-    }
-    if (name) {
-      project.name = name;
-    }
-    if (clientNumber !== undefined) {
-      project.clientNumber = clientNumber;
-    }
-    if (coverImageUrl !== undefined) {
-      project.coverImageUrl = coverImageUrl;
-    }
-    project.updatedAt = new Date().toISOString();
-    await writeStore(store);
-    res.json(normalizeProject(project));
+    await Promise.all(updates);
+
+    res.json(
+      normalizeProject({
+        id: req.params.projectId,
+        name,
+        locationId,
+        coverImageUrl: coverImageUrl || "",
+        images: [],
+        updatedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     next(error);
   }
@@ -106,19 +106,51 @@ export const updateProject = async (req, res, next) => {
 
 export const deleteProject = async (req, res, next) => {
   try {
-    const store = await readStore();
-    const projectIndex = store.projects.findIndex(
-      (item) => item.id === req.params.projectId
-    );
-    if (projectIndex === -1) {
-      return res.status(404).json({ message: "Project not found" });
+    const [locationId, projectSlug] = req.params.projectId.split("__");
+    const foldersToDelete = [
+      `${locationId}/${projectSlug}`,
+      config.cloudinary.folder
+        ? `${config.cloudinary.folder}/${locationId}/${projectSlug}`
+        : null,
+    ].filter(Boolean);
+    const prefixes = [
+      `${locationId}/${projectSlug}`,
+      config.cloudinary.folder
+        ? `${config.cloudinary.folder}/${locationId}/${projectSlug}`
+        : null,
+    ].filter(Boolean);
+    for (const prefix of prefixes) {
+      await cloudinary.api.delete_resources_by_prefix(prefix, {
+        resource_type: "image",
+        type: "upload",
+      });
     }
-    const [project] = store.projects.splice(projectIndex, 1);
-    const images = project?.images || [];
-    if (images.length > 0) {
-      await Promise.all(images.map((image) => deleteImage(image.publicId)));
+    for (const folder of foldersToDelete) {
+      try {
+        await cloudinary.api.delete_folder(folder);
+      } catch (error) {
+        // Ignore if folder is already gone or not empty due to external files.
+      }
     }
-    await writeStore(store);
+    const locationFolders = [
+      locationId,
+      config.cloudinary.folder ? `${config.cloudinary.folder}/${locationId}` : null,
+    ].filter(Boolean);
+    for (const folder of locationFolders) {
+      try {
+        const response = await cloudinary.api.resources({
+          type: "upload",
+          resource_type: "image",
+          prefix: `${folder}/`,
+          max_results: 1,
+        });
+        if (!response.resources || response.resources.length === 0) {
+          await cloudinary.api.delete_folder(folder);
+        }
+      } catch (error) {
+        // Ignore if folder is already gone or not empty due to external files.
+      }
+    }
     res.status(204).send();
   } catch (error) {
     next(error);

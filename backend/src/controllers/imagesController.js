@@ -1,6 +1,7 @@
 import crypto from "crypto";
-import { readStore, writeStore } from "../services/dataStore.js";
 import { uploadBuffer, deleteImage } from "../services/cloudinaryService.js";
+import { slugify } from "../utils/slugify.js";
+import { v2 as cloudinary } from "cloudinary";
 
 const normalizeLabel = (label) => {
   const normalized = String(label || "").toLowerCase();
@@ -12,15 +13,15 @@ const normalizeLabel = (label) => {
 
 export const addProjectImages = async (req, res, next) => {
   try {
-    const store = await readStore();
-    const project = store.projects.find(
-      (item) => item.id === req.params.projectId
-    );
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
-    }
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No images provided" });
+    }
+
+    const { projectName, locationId, locationName, stateOrCountry } = req.body;
+    if (!projectName || !locationId) {
+      return res
+        .status(400)
+        .json({ message: "projectName and locationId are required" });
     }
 
     let labels = [];
@@ -37,9 +38,25 @@ export const addProjectImages = async (req, res, next) => {
     }
 
     const uploadedImages = [];
+    const projectFolder = `${locationId}/${slugify(projectName)}`;
+    const projectTag = `project_${req.params.projectId}`;
+    const locationTag = `location_${locationId}`;
     for (let index = 0; index < req.files.length; index += 1) {
       const file = req.files[index];
-      const result = await uploadBuffer(file.buffer, undefined);
+      const result = await uploadBuffer(file.buffer, {
+        folder: projectFolder,
+        use_filename: true,
+        unique_filename: true,
+        tags: ["vajram_project", projectTag, locationTag],
+        context: {
+          projectId: req.params.projectId,
+          projectName,
+          locationId,
+          locationName,
+          stateOrCountry,
+          label: normalizeLabel(labels[index]),
+        },
+      });
       const image = {
         id: crypto.randomUUID(),
         url: result.secure_url,
@@ -50,13 +67,13 @@ export const addProjectImages = async (req, res, next) => {
       uploadedImages.push(image);
     }
 
-    project.images = [...(project.images || []), ...uploadedImages];
-    if (!project.coverImageUrl && project.images.length > 0) {
-      project.coverImageUrl = project.images[0].url;
-    }
-    project.updatedAt = new Date().toISOString();
-    await writeStore(store);
-    res.status(201).json(project);
+    res.status(201).json({
+      id: req.params.projectId,
+      name: projectName,
+      locationId,
+      coverImageUrl: uploadedImages[0]?.url || "",
+      images: uploadedImages,
+    });
   } catch (error) {
     next(error);
   }
@@ -64,25 +81,20 @@ export const addProjectImages = async (req, res, next) => {
 
 export const updateProjectImage = async (req, res, next) => {
   try {
-    const store = await readStore();
-    const project = store.projects.find(
-      (item) => item.id === req.params.projectId
-    );
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
+    if (!req.body.label) {
+      return res.status(400).json({ message: "Label is required" });
     }
-    const image = (project.images || []).find(
-      (item) => item.id === req.params.imageId
-    );
-    if (!image) {
-      return res.status(404).json({ message: "Image not found" });
-    }
-    if (req.body.label !== undefined) {
-      image.label = normalizeLabel(req.body.label);
-    }
-    project.updatedAt = new Date().toISOString();
-    await writeStore(store);
-    res.json(project);
+    const resource = await cloudinary.api.resource(req.params.imageId, {
+      context: true,
+    });
+    const existing = resource.context?.custom || {};
+    await cloudinary.api.update(req.params.imageId, {
+      context: {
+        ...existing,
+        label: normalizeLabel(req.body.label),
+      },
+    });
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
@@ -90,28 +102,9 @@ export const updateProjectImage = async (req, res, next) => {
 
 export const deleteProjectImage = async (req, res, next) => {
   try {
-    const store = await readStore();
-    const project = store.projects.find(
-      (item) => item.id === req.params.projectId
-    );
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
-    }
-    const imageIndex = (project.images || []).findIndex(
-      (item) => item.id === req.params.imageId
-    );
-    if (imageIndex === -1) {
-      return res.status(404).json({ message: "Image not found" });
-    }
-    const [removed] = project.images.splice(imageIndex, 1);
     if (req.query.deleteCloudinary === "true") {
-      await deleteImage(removed.publicId);
+      await deleteImage(req.params.imageId);
     }
-    if (project.coverImageUrl === removed.url) {
-      project.coverImageUrl = project.images[0]?.url || "";
-    }
-    project.updatedAt = new Date().toISOString();
-    await writeStore(store);
     res.status(204).send();
   } catch (error) {
     next(error);

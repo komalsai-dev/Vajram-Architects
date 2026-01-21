@@ -13,7 +13,6 @@ const getEnv = (key, fallback) => {
 export const config = {
   port: Number(getEnv("PORT", "4000")),
   corsOrigin: getEnv("CORS_ORIGIN", "*"),
-  dataFile: getEnv("DATA_FILE", "data/store.json"),
   adminPassword: getEnv("ADMIN_PASSWORD", ""),
   cloudinary: {
     cloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),

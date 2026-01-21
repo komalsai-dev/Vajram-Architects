@@ -60,10 +60,8 @@ export default function Admin() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("vajramAdminPassword");
-    if (saved) {
-      setAdminPassword(saved);
-    }
+    sessionStorage.removeItem("vajramAdminPassword");
+    setAdminPassword("");
   }, []);
 
   const locationsQuery = useQuery<Location[]>({
@@ -144,6 +142,15 @@ export default function Admin() {
       .sort((a, b) => a.name.localeCompare(b.name));
     return india ? [india, ...remaining] : remaining;
   }, []);
+  const countryOptions = useMemo(
+    () =>
+      countries.map((country) => (
+        <SelectItem key={country.isoCode} value={country.isoCode}>
+          {country.name}
+        </SelectItem>
+      )),
+    [countries]
+  );
   const [newProjectForm, setNewProjectForm] =
     useState<AdminProjectForm>(emptyProjectForm);
   const [editProjectForm, setEditProjectForm] =
@@ -174,6 +181,9 @@ export default function Admin() {
   );
   const [confirmDeleteProject, setConfirmDeleteProject] =
     useState<Project | null>(null);
+  const [openSelect, setOpenSelect] = useState<
+    "newCountry" | "newState" | "newCity" | "editCountry" | "editState" | "editCity" | null
+  >(null);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId),
@@ -239,6 +249,24 @@ export default function Admin() {
     () => State.getStatesOfCountry(newProjectCountryIso),
     [newProjectCountryIso]
   );
+  const newCountryLabel = useMemo(
+    () => countries.find((c) => c.isoCode === newProjectCountryIso)?.name || "",
+    [countries, newProjectCountryIso]
+  );
+  const newStateLabel = useMemo(
+    () =>
+      newProjectStates.find((s) => s.isoCode === newProjectStateIso)?.name || "",
+    [newProjectStates, newProjectStateIso]
+  );
+  const newProjectStateOptions = useMemo(
+    () =>
+      newProjectStates.map((state) => (
+        <SelectItem key={state.isoCode} value={state.isoCode}>
+          {state.name}
+        </SelectItem>
+      )),
+    [newProjectStates]
+  );
   const newProjectCities = useMemo(() => {
     if (!newProjectCountryIso) {
       return [];
@@ -250,10 +278,38 @@ export default function Admin() {
     }
     return City.getCitiesOfCountry(newProjectCountryIso) || [];
   }, [newProjectCountryIso, newProjectStateIso]);
+  const newProjectCityOptions = useMemo(
+    () =>
+      newProjectCities.map((city) => (
+        <SelectItem key={city.name} value={city.name}>
+          {city.name}
+        </SelectItem>
+      )),
+    [newProjectCities]
+  );
 
   const editProjectStates = useMemo(
     () => State.getStatesOfCountry(editProjectCountryIso),
     [editProjectCountryIso]
+  );
+  const editCountryLabel = useMemo(
+    () =>
+      countries.find((c) => c.isoCode === editProjectCountryIso)?.name || "",
+    [countries, editProjectCountryIso]
+  );
+  const editStateLabel = useMemo(
+    () =>
+      editProjectStates.find((s) => s.isoCode === editProjectStateIso)?.name || "",
+    [editProjectStates, editProjectStateIso]
+  );
+  const editProjectStateOptions = useMemo(
+    () =>
+      editProjectStates.map((state) => (
+        <SelectItem key={state.isoCode} value={state.isoCode}>
+          {state.name}
+        </SelectItem>
+      )),
+    [editProjectStates]
   );
   const editProjectCities = useMemo(() => {
     if (!editProjectCountryIso) {
@@ -266,6 +322,15 @@ export default function Admin() {
     }
     return City.getCitiesOfCountry(editProjectCountryIso) || [];
   }, [editProjectCountryIso, editProjectStateIso]);
+  const editProjectCityOptions = useMemo(
+    () =>
+      editProjectCities.map((city) => (
+        <SelectItem key={city.name} value={city.name}>
+          {city.name}
+        </SelectItem>
+      )),
+    [editProjectCities]
+  );
 
   const getCountryName = (isoCode: string) =>
     countries.find((country) => country.isoCode === isoCode)?.name || "";
@@ -359,7 +424,6 @@ export default function Admin() {
     }
     try {
       await adminRequest("/api/admin/verify", trimmed, { method: "GET" });
-      sessionStorage.setItem("vajramAdminPassword", trimmed);
       setAdminPassword(trimmed);
       setPasswordInput("");
       setLoginError("");
@@ -415,6 +479,8 @@ export default function Admin() {
           body: JSON.stringify({
             name: newProjectForm.name,
             locationId,
+            locationName: newProjectCity,
+            stateOrCountry: stateName || countryName,
           }),
         }
       );
@@ -425,6 +491,12 @@ export default function Admin() {
           "labels",
           JSON.stringify(newProjectFiles.map(() => newProjectLabel))
         );
+        formData.append("projectName", newProjectForm.name);
+        formData.append("locationId", locationId);
+        formData.append("locationName", newProjectCity);
+        if (stateName || countryName) {
+          formData.append("stateOrCountry", stateName || countryName);
+        }
         await adminRequest<Project>(
           `/api/projects/${created.id}/images`,
           adminPassword,
@@ -467,6 +539,8 @@ export default function Admin() {
           body: JSON.stringify({
             name: editProjectForm.name,
             locationId,
+            locationName: editProjectCity,
+            stateOrCountry: stateName || countryName,
             coverImageUrl: editProjectForm.coverImageUrl || "",
           }),
         }
@@ -493,13 +567,26 @@ export default function Admin() {
   });
 
   const uploadImagesMutation = useMutation({
-    mutationFn: async () => {
-      if (!activeProjectId || uploadFiles.length === 0) {
+    mutationFn: async (payload?: {
+      projectName: string;
+      locationId: string;
+      locationName?: string;
+      stateOrCountry?: string;
+    }) => {
+      if (!activeProjectId || uploadFiles.length === 0 || !payload) {
         return null;
       }
       const formData = new FormData();
       uploadFiles.forEach((file) => formData.append("images", file));
       formData.append("labels", JSON.stringify(uploadLabels));
+      formData.append("projectName", payload.projectName);
+      formData.append("locationId", payload.locationId);
+      if (payload.locationName) {
+        formData.append("locationName", payload.locationName);
+      }
+      if (payload.stateOrCountry) {
+        formData.append("stateOrCountry", payload.stateOrCountry);
+      }
       return adminRequest<Project>(
         `/api/projects/${activeProjectId}/images`,
         adminPassword,
@@ -573,7 +660,14 @@ export default function Admin() {
       await waitForMinDelay(
         updateProjectMutation.mutateAsync().then(async () => {
           if (uploadFiles.length > 0) {
-            await uploadImagesMutation.mutateAsync();
+            await uploadImagesMutation.mutateAsync({
+              projectName: activeProject?.name || "",
+              locationId: activeProject?.locationId || "",
+              locationName: locationById.get(activeProject?.locationId || "")
+                ?.name,
+              stateOrCountry: locationById.get(activeProject?.locationId || "")
+                ?.stateOrCountry,
+            });
           }
         })
       );
@@ -588,7 +682,16 @@ export default function Admin() {
     }
     setIsUploadingImages(true);
     try {
-      await waitForMinDelay(uploadImagesMutation.mutateAsync());
+      await waitForMinDelay(
+        uploadImagesMutation.mutateAsync({
+          projectName: activeProject?.name || "",
+          locationId: activeProject?.locationId || "",
+          locationName: locationById.get(activeProject?.locationId || "")
+            ?.name,
+          stateOrCountry: locationById.get(activeProject?.locationId || "")
+            ?.stateOrCountry,
+        })
+      );
     } finally {
       setIsUploadingImages(false);
     }
@@ -703,6 +806,10 @@ export default function Admin() {
                     className="cursor-pointer"
                   />
                   <Select
+                    open={openSelect === "newCountry"}
+                    onOpenChange={(open) =>
+                      setOpenSelect(open ? "newCountry" : null)
+                    }
                     value={newProjectCountryIso}
                     onValueChange={(iso) => {
                       setNewProjectCountryIso(iso);
@@ -711,24 +818,23 @@ export default function Admin() {
                     }}
                   >
                     <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                      <SelectValue placeholder="Select country" />
+                      <span className={newCountryLabel ? "truncate" : "truncate text-gray-400"}>
+                        {newCountryLabel || "Select country"}
+                      </span>
                     </SelectTrigger>
                     <SelectContent
                       side="bottom"
                       avoidCollisions={false}
                       className="admin-select-scroll max-h-60 overflow-y-auto"
                     >
-                      {countries.map((country) => (
-                        <SelectItem
-                          key={country.isoCode}
-                          value={country.isoCode}
-                        >
-                          {country.name}
-                        </SelectItem>
-                      ))}
+                      {openSelect === "newCountry" ? countryOptions : null}
                     </SelectContent>
                   </Select>
                   <Select
+                    open={openSelect === "newState"}
+                    onOpenChange={(open) =>
+                      setOpenSelect(open ? "newState" : null)
+                    }
                     value={newProjectStateIso}
                     onValueChange={(iso) => {
                       setNewProjectStateIso(iso);
@@ -737,38 +843,38 @@ export default function Admin() {
                     disabled={!newProjectCountryIso || newProjectStates.length === 0}
                   >
                     <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
-                      <SelectValue placeholder="Select state" />
+                      <span className={newStateLabel ? "truncate" : "truncate text-gray-400"}>
+                        {newStateLabel || "Select state"}
+                      </span>
                     </SelectTrigger>
                     <SelectContent
                       side="bottom"
                       avoidCollisions={false}
                       className="admin-select-scroll max-h-60 overflow-y-auto"
                     >
-                      {newProjectStates.map((state) => (
-                        <SelectItem key={state.isoCode} value={state.isoCode}>
-                          {state.name}
-                        </SelectItem>
-                      ))}
+                      {openSelect === "newState" ? newProjectStateOptions : null}
                     </SelectContent>
                   </Select>
                   <Select
+                    open={openSelect === "newCity"}
+                    onOpenChange={(open) =>
+                      setOpenSelect(open ? "newCity" : null)
+                    }
                     value={newProjectCity}
                     onValueChange={(value) => setNewProjectCity(value)}
                     disabled={!newProjectStateIso || newProjectCities.length === 0}
                   >
                     <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
-                      <SelectValue placeholder="Select city" />
+                      <span className={newProjectCity ? "truncate" : "truncate text-gray-400"}>
+                        {newProjectCity || "Select city"}
+                      </span>
                     </SelectTrigger>
                     <SelectContent
                       side="bottom"
                       avoidCollisions={false}
                       className="admin-select-scroll max-h-60 overflow-y-auto"
                     >
-                      {newProjectCities.map((city) => (
-                        <SelectItem key={city.name} value={city.name}>
-                          {city.name}
-                        </SelectItem>
-                      ))}
+                      {openSelect === "newCity" ? newProjectCityOptions : null}
                     </SelectContent>
                   </Select>
                   <div className="md:col-span-6 grid gap-4 md:grid-cols-4 items-center">
@@ -838,6 +944,10 @@ export default function Admin() {
                         className="cursor-pointer"
                       />
                       <Select
+                        open={openSelect === "editCountry"}
+                        onOpenChange={(open) =>
+                          setOpenSelect(open ? "editCountry" : null)
+                        }
                         value={editProjectCountryIso}
                         onValueChange={(iso) => {
                           setEditProjectCountryIso(iso);
@@ -846,24 +956,23 @@ export default function Admin() {
                         }}
                       >
                         <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                          <SelectValue placeholder="Select country" />
+                          <span className={editCountryLabel ? "truncate" : "truncate text-gray-400"}>
+                            {editCountryLabel || "Select country"}
+                          </span>
                         </SelectTrigger>
                         <SelectContent
                           side="bottom"
                           avoidCollisions={false}
                           className="admin-select-scroll max-h-60 overflow-y-auto"
                         >
-                          {countries.map((country) => (
-                            <SelectItem
-                              key={country.isoCode}
-                              value={country.isoCode}
-                            >
-                              {country.name}
-                            </SelectItem>
-                          ))}
+                          {openSelect === "editCountry" ? countryOptions : null}
                         </SelectContent>
                       </Select>
                       <Select
+                        open={openSelect === "editState"}
+                        onOpenChange={(open) =>
+                          setOpenSelect(open ? "editState" : null)
+                        }
                         value={editProjectStateIso}
                         onValueChange={(iso) => {
                           setEditProjectStateIso(iso);
@@ -871,37 +980,37 @@ export default function Admin() {
                         }}
                       >
                         <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                          <SelectValue placeholder="Select state" />
+                          <span className={editStateLabel ? "truncate" : "truncate text-gray-400"}>
+                            {editStateLabel || "Select state"}
+                          </span>
                         </SelectTrigger>
                         <SelectContent
                           side="bottom"
                           avoidCollisions={false}
                           className="admin-select-scroll max-h-60 overflow-y-auto"
                         >
-                          {editProjectStates.map((state) => (
-                            <SelectItem key={state.isoCode} value={state.isoCode}>
-                              {state.name}
-                            </SelectItem>
-                          ))}
+                          {openSelect === "editState" ? editProjectStateOptions : null}
                         </SelectContent>
                       </Select>
                       <Select
+                        open={openSelect === "editCity"}
+                        onOpenChange={(open) =>
+                          setOpenSelect(open ? "editCity" : null)
+                        }
                         value={editProjectCity}
                         onValueChange={(value) => setEditProjectCity(value)}
                       >
                         <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                          <SelectValue placeholder="Select city" />
+                          <span className={editProjectCity ? "truncate" : "truncate text-gray-400"}>
+                            {editProjectCity || "Select city"}
+                          </span>
                         </SelectTrigger>
                         <SelectContent
                           side="bottom"
                           avoidCollisions={false}
                           className="admin-select-scroll max-h-60 overflow-y-auto"
                         >
-                          {editProjectCities.map((city) => (
-                            <SelectItem key={city.name} value={city.name}>
-                              {city.name}
-                            </SelectItem>
-                          ))}
+                          {openSelect === "editCity" ? editProjectCityOptions : null}
                         </SelectContent>
                       </Select>
                       <Input

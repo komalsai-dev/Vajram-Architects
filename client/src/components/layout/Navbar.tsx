@@ -3,8 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Search, Menu, X } from "lucide-react";
 import { searchWebsite, type SearchResult } from "@/lib/search-data";
-import { getLocationData } from "@/lib/locations-data";
-import { getClientImages } from "@/lib/clients-data";
+import { getAllLocations, getLocationData } from "@/lib/locations-data";
+import {
+  getAllClientIds,
+  getClientImages,
+  getClientName,
+} from "@/lib/clients-data";
 import { apiUrl } from "@/lib/api";
 import type { Location, Project } from "@/lib/types";
 
@@ -15,44 +19,80 @@ export function Navbar() {
   const projectsQuery = useQuery<Project[]>({
     queryKey: [apiUrl("/api/projects")],
   });
-  const fallbackLocations: Location[] = [
-    { name: "Guntur", id: "guntur", stateOrCountry: "Andhra Pradesh" },
-    { name: "Hyderabad", id: "hyderabad", stateOrCountry: "Telangana" },
-    { name: "Siddipet", id: "siddipet", stateOrCountry: "Telangana" },
-    { name: "Suryapet", id: "suryapet", stateOrCountry: "Telangana" },
-    { name: "Nirmal", id: "nirmal", stateOrCountry: "Telangana" },
-    { name: "Ireland", id: "ireland", stateOrCountry: "Ireland" },
-  ];
-  const locations = locationsQuery.data?.length
-    ? locationsQuery.data
-    : fallbackLocations;
+  const fallbackLocations = useMemo<Location[]>(() => {
+    return getAllLocations().map((locationId) => {
+      const locationName = locationId
+        .split("-")
+        .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+        .join(" ");
+      const locationData = getLocationData(locationName);
+      return {
+        id: locationId,
+        name: locationData.name,
+        stateOrCountry: locationData.stateOrCountry,
+      };
+    });
+  }, []);
+
+  const locations = useMemo(() => {
+    const apiLocations = locationsQuery.data || [];
+    const merged = new Map<string, Location>();
+    fallbackLocations.forEach((location) => {
+      merged.set(location.id, { ...location });
+    });
+    apiLocations.forEach((location) => {
+      const existing = merged.get(location.id);
+      if (existing) {
+        merged.set(location.id, {
+          ...existing,
+          name: location.name || existing.name,
+          stateOrCountry:
+            location.stateOrCountry || existing.stateOrCountry || "",
+        });
+      } else {
+        merged.set(location.id, location);
+      }
+    });
+    return Array.from(merged.values());
+  }, [fallbackLocations, locationsQuery.data]);
+
+  const getLocationIdFromClient = (clientId: string) => {
+    const parts = clientId.split("-");
+    if (parts.length < 2) {
+      return clientId;
+    }
+    return parts.slice(0, -1).join("-");
+  };
 
   const fallbackProjects = useMemo<Project[]>(() => {
-    return fallbackLocations.reduce<Project[]>((acc, location) => {
-      const locationData = getLocationData(location.name);
-      const firstClient = locationData.clients[0];
-      if (!firstClient) {
-        return acc;
-      }
-      const images = getClientImages(firstClient.id).map((image, index) => ({
-        id: `${firstClient.id}-${index}`,
+    return getAllClientIds().map((clientId) => {
+      const images = getClientImages(clientId).map((image, index) => ({
+        id: `${clientId}-${index}`,
         url: image.url,
         label: image.label,
       }));
-      acc.push({
-        id: firstClient.id,
-        name: firstClient.title,
-        locationId: location.id,
-        coverImageUrl: firstClient.image || "",
+      return {
+        id: clientId,
+        name: getClientName(clientId),
+        locationId: getLocationIdFromClient(clientId),
+        coverImageUrl: images[0]?.url || "",
         images,
-      });
-      return acc;
-    }, []);
-  }, [fallbackLocations]);
+      };
+    });
+  }, []);
 
   const projects = useMemo(() => {
     const apiProjects = projectsQuery.data || [];
-    return [...fallbackProjects, ...apiProjects];
+    const merged = new Map<string, Project>();
+    fallbackProjects.forEach((project) => {
+      merged.set(project.id, project);
+    });
+    apiProjects.forEach((project) => {
+      if (!merged.has(project.id)) {
+        merged.set(project.id, project);
+      }
+    });
+    return Array.from(merged.values());
   }, [fallbackProjects, projectsQuery.data]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);

@@ -16,12 +16,19 @@ interface ClientPortfolioProps {
 export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
   const projectQuery = useQuery<Project>({
     queryKey: [apiUrl(`/api/projects/${clientId}`)],
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    retry: 2,
+    refetchInterval: (data) => (data?.images?.length ? false : 2000),
   });
   const apiProject = projectQuery.data;
   const fallbackImages = getClientImages(clientId);
   const fallbackName = getClientName(clientId);
   const images = apiProject?.images?.length ? apiProject.images : fallbackImages;
-  const clientName = apiProject?.name || fallbackName;
+  const clientName = apiProject?.name || fallbackName || clientId;
+  const hasImages = images && images.length > 0;
+  const isLoading = projectQuery.isLoading || projectQuery.isFetching;
   const [showAll, setShowAll] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -69,31 +76,15 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
   
   // Removed debug logs
   
-  // Handle case where no images are found
-  if (!images || images.length === 0) {
+  if (!hasImages && !isLoading) {
     return (
       <div className="min-h-screen bg-black text-white">
         <Navbar />
         <main>
-          <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
-            <Link 
-              href="/" 
-              className="inline-flex items-center text-gray-400 hover:text-white transition-colors mb-6 sm:mb-8"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Home
-            </Link>
-            
-            <div className="text-center">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold font-serif mb-4 sm:mb-6 text-white">
-                Client Not Found
-              </h1>
-              <p className="text-base sm:text-lg text-gray-400">
-                No images found for client {clientId}
-              </p>
-            </div>
+          <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-12 text-center">
+            <p className="text-sm text-gray-400">
+              {isLoading ? "Loading project..." : "Preparing images..."}
+            </p>
           </div>
         </main>
         <Footer />
@@ -101,16 +92,18 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
     );
   }
 
+  // images are available below
+
   const initialImages = images.slice(0, 6);
   const remainingImages = images.slice(6);
   const displayedImages = showAll ? images : initialImages;
-  const hasMoreImages = remainingImages.length > 0;
+  const hasMoreImages = hasImages && remainingImages.length > 0;
 
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
       
-      <main>
+      <main className="relative">
         <section ref={sectionRef} className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
           <Link 
             href="/" 
@@ -141,7 +134,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
               : 'opacity-0 -translate-x-12'
           }`}
           style={{ transitionDelay: '0.3s' }}>
-            Project Portfolio
+            {hasImages ? "Project Portfolio" : "No images yet"}
           </p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
@@ -245,6 +238,13 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
             </div>
           )}
         </section>
+        {!hasImages && isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <div className="text-center">
+              <p className="text-sm text-gray-300">Loading images...</p>
+            </div>
+          </div>
+        )}
       </main>
       
       <Footer />
