@@ -149,7 +149,7 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
           <Button 
             onClick={() => setShowAll(true)}
             variant="outline" 
-            className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase"
+            className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
           >
             View More
           </Button>
@@ -169,7 +169,7 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
               }
             }}
             variant="outline" 
-            className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase"
+            className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
           >
             Show Less
           </Button>
@@ -188,7 +188,7 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
         >
           <Button 
             variant="outline" 
-            className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase"
+            className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
           >
             View More
           </Button>

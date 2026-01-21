@@ -20,7 +20,10 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
     refetchOnWindowFocus: true,
     staleTime: 0,
     retry: 2,
-    refetchInterval: (data) => (data?.images?.length ? false : 2000),
+    refetchInterval: (query) => {
+      const data = query.state.data as Project | undefined;
+      return data?.images?.length ? false : 2000;
+    },
   });
   const apiProject = projectQuery.data;
   const fallbackImages = getClientImages(clientId);
@@ -120,7 +123,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
             Back to Home
           </Link>
           
-          <h1 className={`text-3xl sm:text-4xl md:text-5xl font-bold font-serif mb-4 sm:mb-6 text-white transition-all duration-[2000ms] ease-out ${
+          <h1 className={`text-3xl sm:text-4xl md:text-5xl font-bold font-serif mb-2 sm:mb-3 text-white transition-all duration-[2000ms] ease-out ${
             isVisible 
               ? 'opacity-100 translate-x-0' 
               : 'opacity-0 -translate-x-12'
@@ -128,7 +131,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
           style={{ transitionDelay: '0.2s' }}>
             {clientName}
           </h1>
-          <p className={`text-base sm:text-lg text-gray-400 mb-8 sm:mb-12 transition-all duration-[2000ms] ease-out ${
+          <p className={`text-base sm:text-lg text-gray-400 mb-3 sm:mb-4 transition-all duration-[2000ms] ease-out ${
             isVisible 
               ? 'opacity-100 translate-x-0' 
               : 'opacity-0 -translate-x-12'

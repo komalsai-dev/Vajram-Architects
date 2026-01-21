@@ -1192,7 +1192,7 @@ export default function Admin() {
                           <Button
                             variant="outline"
                             onClick={() => setActiveProjectId(project.id)}
-                            className="uppercase tracking-widest text-[10px] cursor-pointer"
+                            className="uppercase tracking-widest text-[10px] cursor-pointer hover:bg-green-600 hover:text-white hover:border-green-600"
                           >
                             Manage
                           </Button>
@@ -1200,7 +1200,7 @@ export default function Admin() {
                             variant="outline"
                             onClick={() => handleDeleteProject(project)}
                             disabled={deletingProjectId === project.id}
-                            className={`uppercase tracking-widest text-[10px] cursor-pointer ${
+                            className={`uppercase tracking-widest text-[10px] cursor-pointer hover:bg-red-600 hover:text-white hover:border-red-600 ${
                               deletingProjectId === project.id
                                 ? "animate-pulse"
                                 : ""
