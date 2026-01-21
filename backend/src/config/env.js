@@ -18,6 +18,6 @@ export const config = {
     cloudName: getEnv("CLOUDINARY_CLOUD_NAME", ""),
     apiKey: getEnv("CLOUDINARY_API_KEY", ""),
     apiSecret: getEnv("CLOUDINARY_API_SECRET", ""),
-    folder: getEnv("CLOUDINARY_FOLDER", "vajram/projects"),
+    folder: getEnv("CLOUDINARY_FOLDER", ""),
   },
 };
