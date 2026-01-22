@@ -164,7 +164,7 @@ export function Hero({ slides }: HeroProps) {
                 projectsSection.scrollIntoView({ behavior: "smooth", block: "start" });
               }
             }}
-            className={`rounded-none border-white bg-white text-black hover:bg-gray-100 hover:text-black text-[10px] sm:text-xs md:text-sm font-bold tracking-[0.2em] px-4 sm:px-6 md:px-8 lg:px-10 h-9 sm:h-10 md:h-12 lg:h-14 uppercase transition-all duration-[2000ms] ease-out ${
+            className={`rounded-2xl border-white bg-white/85 text-black hover:bg-white hover:text-black text-[10px] sm:text-xs md:text-sm font-bold tracking-[0.2em] px-4 sm:px-6 md:px-8 lg:px-10 h-9 sm:h-10 md:h-12 lg:h-14 uppercase cursor-pointer transition-all duration-[2000ms] ease-out ${
               isTextVisible 
                 ? 'opacity-100 translate-x-0' 
                 : 'opacity-0 -translate-x-12'
