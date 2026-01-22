@@ -1,17 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/Hero";
 import { ArticleGrid } from "@/components/ArticleGrid";
 import { ProjectsMap } from "@/components/ProjectsMap";
+import { Button } from "@/components/ui/button";
 import { getLocationData } from "@/lib/locations-data";
 import { apiUrl } from "@/lib/api";
 import type { Location, Project } from "@/lib/types";
 
 export default function Home() {
+  const [visibleLocationsCount, setVisibleLocationsCount] = useState(4);
   // Restore scroll position when returning from portfolio page
   useEffect(() => {
+    const navigationEntries = performance.getEntriesByType("navigation");
+    const navigationEntry = navigationEntries[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    const navigationType = navigationEntry?.type;
+    const isReload =
+      navigationType === "reload" ||
+      (performance as unknown as { navigation?: { type?: number } }).navigation
+        ?.type === 1;
     const savedScrollPosition = sessionStorage.getItem("homeScrollPosition");
     const shouldScrollToTop = sessionStorage.getItem("scrollToTop");
     
@@ -19,6 +30,12 @@ export default function Home() {
     if (shouldScrollToTop === "true") {
       window.scrollTo({ top: 0, behavior: "smooth" });
       sessionStorage.removeItem("scrollToTop");
+      sessionStorage.removeItem("homeScrollPosition");
+      return;
+    }
+
+    if (isReload) {
+      window.scrollTo({ top: 0, behavior: "instant" });
       sessionStorage.removeItem("homeScrollPosition");
       return;
     }
@@ -75,7 +92,7 @@ export default function Home() {
     clients: location.clients.slice(0, 1),
   }));
 
-  const locationDataList = (() => {
+  const locationDataList = useMemo(() => {
     const locationMap = new Map<string, typeof fallbackLocations[number]>();
     fallbackLocations.forEach((location) => {
       locationMap.set(location.id, { ...location });
@@ -116,7 +133,11 @@ export default function Home() {
         ...(apiClientsByLocation.get(location.id) || []),
       ],
     }));
-  })();
+  }, [apiLocations, apiProjects]);
+
+  const visibleLocations = locationDataList.slice(0, visibleLocationsCount);
+  const hasMoreLocations = visibleLocationsCount < locationDataList.length;
+  const canShowLess = locationDataList.length > 4 && visibleLocationsCount > 4;
 
   // Convert location clients to article format for ArticleGrid component
   const convertToArticles = (locationData: typeof fallbackLocations[number]) => {
@@ -143,7 +164,7 @@ export default function Home() {
           <Hero slides={heroSlides} />
         </section>
         
-            {locationDataList.map((locationData, index) => (
+            {visibleLocations.map((locationData, index) => (
             <ArticleGrid 
                 key={locationData.name}
                 title={locationData.name}
@@ -152,6 +173,32 @@ export default function Home() {
                 isFirstSection={index === 0}
             />
             ))}
+
+            {(hasMoreLocations || canShowLess) && (
+              <div className="container mx-auto px-3 sm:px-4 flex justify-center mt-8 sm:mt-10 md:mt-12">
+                {hasMoreLocations ? (
+                  <Button
+                    onClick={() =>
+                      setVisibleLocationsCount((count) =>
+                        Math.min(count + 3, locationDataList.length)
+                      )
+                    }
+                    variant="outline"
+                    className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
+                  >
+                    View More Projects
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setVisibleLocationsCount(4)}
+                    variant="outline"
+                    className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
+                  >
+                    Show Less
+                  </Button>
+                )}
+              </div>
+            )}
 
         <ProjectsMap />
       </main>

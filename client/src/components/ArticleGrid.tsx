@@ -75,7 +75,7 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
       {title && (
         <div className="mb-6 sm:mb-8">
           <h2 
-            className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-2 text-white transition-all duration-[2000ms] ease-out flex items-center gap-2 sm:gap-3 ${
+            className={`text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-2 text-white transition-all duration-[2000ms] ease-out flex items-center gap-2 sm:gap-3 ${
               isVisible 
                 ? 'opacity-100 translate-x-0' 
                 : 'opacity-0 -translate-x-12'

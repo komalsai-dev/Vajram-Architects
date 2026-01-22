@@ -57,7 +57,7 @@ export function ArticleCard({ image, category, date, title, link, animationDelay
         </div>
       )}
       
-      <h3 className="text-base sm:text-lg font-bold font-serif leading-tight text-white group-hover:underline decoration-1 underline-offset-2 sm:underline-offset-4 decoration-gray-400 transition-all">
+      <h3 className="text-base sm:text-lg font-normal font-serif tracking-[0.02em] leading-tight text-white group-hover:underline decoration-1 underline-offset-2 sm:underline-offset-4 decoration-gray-400 transition-all">
         {title}
       </h3>
     </Link>

@@ -158,6 +158,10 @@ export default function Admin() {
   const [newProjectCountryIso, setNewProjectCountryIso] = useState("");
   const [newProjectStateIso, setNewProjectStateIso] = useState("");
   const [newProjectCity, setNewProjectCity] = useState("");
+  const [newProjectCityData, setNewProjectCityData] = useState<{
+    latitude?: string | null;
+    longitude?: string | null;
+  } | null>(null);
   const [newProjectLabel, setNewProjectLabel] = useState<"Interior" | "Exterior">(
     "Exterior"
   );
@@ -165,6 +169,10 @@ export default function Admin() {
   const [editProjectCountryIso, setEditProjectCountryIso] = useState("");
   const [editProjectStateIso, setEditProjectStateIso] = useState("");
   const [editProjectCity, setEditProjectCity] = useState("");
+  const [editProjectCityData, setEditProjectCityData] = useState<{
+    latitude?: string | null;
+    longitude?: string | null;
+  } | null>(null);
   const [activeProjectId, setActiveProjectId] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadLabels, setUploadLabels] = useState<string[]>([]);
@@ -278,6 +286,14 @@ export default function Admin() {
     }
     return City.getCitiesOfCountry(newProjectCountryIso) || [];
   }, [newProjectCountryIso, newProjectStateIso]);
+  const findCityData = (
+    cities: Array<{
+      name: string;
+      latitude?: string | null;
+      longitude?: string | null;
+    }>,
+    name: string
+  ) => cities.find((city) => city.name === name);
   const newProjectCityOptions = useMemo(
     () =>
       newProjectCities.map((city) => (
@@ -356,6 +372,22 @@ export default function Admin() {
       setEditProjectCity(editProjectCities[0].name);
     }
   }, [editProjectCity, editProjectCities]);
+
+  useEffect(() => {
+    if (!editProjectCity) {
+      setEditProjectCityData(null);
+      return;
+    }
+    const cityData = findCityData(editProjectCities, editProjectCity);
+    setEditProjectCityData(
+      cityData
+        ? {
+            latitude: cityData.latitude,
+            longitude: cityData.longitude,
+          }
+        : null
+    );
+  }, [editProjectCities, editProjectCity]);
 
   const resolveLocationSelection = (
     location: Location | undefined,
@@ -481,6 +513,8 @@ export default function Admin() {
             locationId,
             locationName: newProjectCity,
             stateOrCountry: stateName || countryName,
+            latitude: newProjectCityData?.latitude,
+            longitude: newProjectCityData?.longitude,
           }),
         }
       );
@@ -496,6 +530,12 @@ export default function Admin() {
         formData.append("locationName", newProjectCity);
         if (stateName || countryName) {
           formData.append("stateOrCountry", stateName || countryName);
+        }
+        if (newProjectCityData?.latitude) {
+          formData.append("latitude", newProjectCityData.latitude);
+        }
+        if (newProjectCityData?.longitude) {
+          formData.append("longitude", newProjectCityData.longitude);
         }
         await adminRequest<Project>(
           `/api/projects/${created.id}/images`,
@@ -541,6 +581,8 @@ export default function Admin() {
             locationId,
             locationName: editProjectCity,
             stateOrCountry: stateName || countryName,
+            latitude: editProjectCityData?.latitude,
+            longitude: editProjectCityData?.longitude,
             coverImageUrl: editProjectForm.coverImageUrl || "",
           }),
         }
@@ -572,6 +614,8 @@ export default function Admin() {
       locationId: string;
       locationName?: string;
       stateOrCountry?: string;
+      latitude?: number;
+      longitude?: number;
     }) => {
       if (!activeProjectId || uploadFiles.length === 0 || !payload) {
         return null;
@@ -586,6 +630,12 @@ export default function Admin() {
       }
       if (payload.stateOrCountry) {
         formData.append("stateOrCountry", payload.stateOrCountry);
+      }
+      if (payload.latitude !== undefined) {
+        formData.append("latitude", String(payload.latitude));
+      }
+      if (payload.longitude !== undefined) {
+        formData.append("longitude", String(payload.longitude));
       }
       return adminRequest<Project>(
         `/api/projects/${activeProjectId}/images`,
@@ -667,6 +717,10 @@ export default function Admin() {
                 ?.name,
               stateOrCountry: locationById.get(activeProject?.locationId || "")
                 ?.stateOrCountry,
+              latitude: locationById.get(activeProject?.locationId || "")
+                ?.latitude,
+              longitude: locationById.get(activeProject?.locationId || "")
+                ?.longitude,
             });
           }
         })
@@ -690,6 +744,10 @@ export default function Admin() {
             ?.name,
           stateOrCountry: locationById.get(activeProject?.locationId || "")
             ?.stateOrCountry,
+          latitude: locationById.get(activeProject?.locationId || "")
+            ?.latitude,
+          longitude: locationById.get(activeProject?.locationId || "")
+            ?.longitude,
         })
       );
     } finally {
@@ -732,8 +790,8 @@ export default function Admin() {
           <h1
             className={
               adminPassword
-                ? "text-3xl sm:text-4xl font-bold font-serif mb-8"
-                : "text-3xl sm:text-4xl font-bold font-serif mb-6"
+                ? "text-3xl sm:text-4xl font-normal font-serif tracking-[0.02em] mb-8"
+                : "text-3xl sm:text-4xl font-normal font-serif tracking-[0.02em] mb-6"
             }
           >
             Admin Panel
@@ -815,6 +873,7 @@ export default function Admin() {
                       setNewProjectCountryIso(iso);
                       setNewProjectStateIso("");
                       setNewProjectCity("");
+                      setNewProjectCityData(null);
                     }}
                   >
                     <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
@@ -839,6 +898,7 @@ export default function Admin() {
                     onValueChange={(iso) => {
                       setNewProjectStateIso(iso);
                       setNewProjectCity("");
+                      setNewProjectCityData(null);
                     }}
                     disabled={!newProjectCountryIso || newProjectStates.length === 0}
                   >
@@ -861,7 +921,18 @@ export default function Admin() {
                       setOpenSelect(open ? "newCity" : null)
                     }
                     value={newProjectCity}
-                    onValueChange={(value) => setNewProjectCity(value)}
+                    onValueChange={(value) => {
+                      setNewProjectCity(value);
+                      const cityData = findCityData(newProjectCities, value);
+                      setNewProjectCityData(
+                        cityData
+                          ? {
+                              latitude: cityData.latitude,
+                              longitude: cityData.longitude,
+                            }
+                          : null
+                      );
+                    }}
                     disabled={!newProjectStateIso || newProjectCities.length === 0}
                   >
                     <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
@@ -953,6 +1024,7 @@ export default function Admin() {
                           setEditProjectCountryIso(iso);
                           setEditProjectStateIso("");
                           setEditProjectCity("");
+                          setEditProjectCityData(null);
                         }}
                       >
                         <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
@@ -977,6 +1049,7 @@ export default function Admin() {
                         onValueChange={(iso) => {
                           setEditProjectStateIso(iso);
                           setEditProjectCity("");
+                          setEditProjectCityData(null);
                         }}
                       >
                         <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
@@ -998,7 +1071,18 @@ export default function Admin() {
                           setOpenSelect(open ? "editCity" : null)
                         }
                         value={editProjectCity}
-                        onValueChange={(value) => setEditProjectCity(value)}
+                        onValueChange={(value) => {
+                          setEditProjectCity(value);
+                          const cityData = findCityData(editProjectCities, value);
+                          setEditProjectCityData(
+                            cityData
+                              ? {
+                                  latitude: cityData.latitude,
+                                  longitude: cityData.longitude,
+                                }
+                              : null
+                          );
+                        }}
                       >
                         <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
                           <span className={editProjectCity ? "truncate" : "truncate text-gray-400"}>

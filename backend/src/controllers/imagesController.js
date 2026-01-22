@@ -17,7 +17,14 @@ export const addProjectImages = async (req, res, next) => {
       return res.status(400).json({ message: "No images provided" });
     }
 
-    const { projectName, locationId, locationName, stateOrCountry } = req.body;
+    const {
+      projectName,
+      locationId,
+      locationName,
+      stateOrCountry,
+      latitude,
+      longitude,
+    } = req.body;
     if (!projectName || !locationId) {
       return res
         .status(400)
@@ -54,6 +61,8 @@ export const addProjectImages = async (req, res, next) => {
           locationId,
           locationName,
           stateOrCountry,
+          latitude,
+          longitude,
           label: normalizeLabel(labels[index]),
         },
       });

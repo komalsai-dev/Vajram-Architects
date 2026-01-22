@@ -4,6 +4,8 @@ const normalizeLocation = (location) => ({
   id: location.id,
   name: location.name,
   stateOrCountry: location.stateOrCountry || "",
+  latitude: location.latitude,
+  longitude: location.longitude,
 });
 
 export const listLocations = async (req, res, next) => {

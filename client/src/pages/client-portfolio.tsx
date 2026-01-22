@@ -123,7 +123,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
             Back to Home
           </Link>
           
-          <h1 className={`text-3xl sm:text-4xl md:text-5xl font-bold font-serif mb-2 sm:mb-3 text-white transition-all duration-[2000ms] ease-out ${
+          <h1 className={`text-3xl sm:text-4xl md:text-5xl font-normal font-serif tracking-[0.02em] mb-2 sm:mb-3 text-white transition-all duration-[2000ms] ease-out ${
             isVisible 
               ? 'opacity-100 translate-x-0' 
               : 'opacity-0 -translate-x-12'

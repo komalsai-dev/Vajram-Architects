@@ -40,7 +40,7 @@ export default function Contact() {
           {/* Main Contact Section */}
           <div className="text-center">
             {/* Heading */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold font-serif mb-4 sm:mb-6 text-white">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white">
               Contact Us
             </h1>
             

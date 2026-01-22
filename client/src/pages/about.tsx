@@ -50,7 +50,7 @@ export default function About() {
 
           {/* Hero Section */}
           <div className="text-center mb-12 sm:mb-16 md:mb-20">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold font-serif mb-4 sm:mb-6 text-white">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white">
               About VAJRAM ARCHITECTS
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">

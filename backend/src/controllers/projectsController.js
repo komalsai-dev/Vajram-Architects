@@ -67,6 +67,8 @@ export const updateProject = async (req, res, next) => {
       locationId,
       locationName,
       stateOrCountry,
+      latitude,
+      longitude,
       coverImageUrl,
     } = req.body;
 
@@ -83,6 +85,8 @@ export const updateProject = async (req, res, next) => {
           locationId,
           locationName,
           stateOrCountry,
+          latitude,
+          longitude,
           label: resource.context?.custom?.label || "Exterior",
         },
       })

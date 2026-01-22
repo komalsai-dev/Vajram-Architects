@@ -134,7 +134,7 @@ export function Hero({ slides }: HeroProps) {
         <div className="max-w-2xl pointer-events-auto">
           {/* Heading - Mobile: smaller, Desktop: original */}
           <h1 
-            className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold font-serif text-white mb-3 sm:mb-4 md:mb-6 leading-tight transition-all duration-[2000ms] ease-out ${
+            className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-normal font-serif tracking-[0.02em] text-white mb-3 sm:mb-4 md:mb-6 leading-tight transition-all duration-[2000ms] ease-out ${
               isTextVisible 
                 ? 'opacity-100 translate-x-0' 
                 : 'opacity-0 -translate-x-12'

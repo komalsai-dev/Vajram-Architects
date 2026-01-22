@@ -2,6 +2,8 @@ export interface Location {
   id: string;
   name: string;
   stateOrCountry?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ProjectImage {

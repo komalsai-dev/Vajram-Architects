@@ -79,12 +79,27 @@ export const buildCatalogFromCloudinary = async () => {
     const projectId = `${locationId}__${projectSlug}`;
     const locationName = titleCase(locationFolder);
 
+    const latitude = Number(resource.context?.custom?.latitude);
+    const longitude = Number(resource.context?.custom?.longitude);
     if (!locationMap.has(locationId)) {
       locationMap.set(locationId, {
         id: locationId,
         name: locationName,
         stateOrCountry: resource.context?.custom?.stateOrCountry || "",
+        latitude: Number.isFinite(latitude) ? latitude : undefined,
+        longitude: Number.isFinite(longitude) ? longitude : undefined,
       });
+    } else {
+      const existingLocation = locationMap.get(locationId);
+      if (
+        existingLocation &&
+        (!existingLocation.latitude || !existingLocation.longitude) &&
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude)
+      ) {
+        existingLocation.latitude = latitude;
+        existingLocation.longitude = longitude;
+      }
     }
 
     const existing =

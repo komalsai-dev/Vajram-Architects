@@ -35,7 +35,7 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
   });
 
   const fallbackLocationKeys = getAllLocations();
-  const fallbackLocations = fallbackLocationKeys.map((locationKey) => {
+  const fallbackLocations: Location[] = fallbackLocationKeys.map((locationKey) => {
     const locationData = getLocationData(
       locationKey.charAt(0).toUpperCase() + locationKey.slice(1)
     );
@@ -45,9 +45,29 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
       stateOrCountry: locationData.stateOrCountry,
     };
   });
-  const locations = locationsQuery.data?.length
-    ? locationsQuery.data
-    : fallbackLocations;
+  const locations = useMemo(() => {
+    const apiLocations = locationsQuery.data || [];
+    const merged = new Map<string, Location>();
+    fallbackLocations.forEach((location) => {
+      merged.set(location.id, { ...location });
+    });
+    apiLocations.forEach((location) => {
+      const existing = merged.get(location.id);
+      if (existing) {
+        merged.set(location.id, {
+          ...existing,
+          name: location.name || existing.name,
+          stateOrCountry:
+            location.stateOrCountry || existing.stateOrCountry || "",
+          latitude: location.latitude ?? existing.latitude,
+          longitude: location.longitude ?? existing.longitude,
+        });
+      } else {
+        merged.set(location.id, location);
+      }
+    });
+    return Array.from(merged.values());
+  }, [fallbackLocations, locationsQuery.data]);
 
   const fallbackProjects = useMemo(() => {
     return fallbackLocationKeys.flatMap((locationKey) => {
@@ -76,7 +96,15 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
   const locationsWithCounts = useMemo(() => {
     return locations
       .map((location) => {
-        const coords = getLocationCoordinates(location.id);
+        const coords =
+          location.latitude !== undefined && location.longitude !== undefined
+            ? {
+                name: location.name,
+                lat: location.latitude,
+                lng: location.longitude,
+                clientCount: 0,
+              }
+            : getLocationCoordinates(location.id);
         if (!coords) {
           return null;
         }
@@ -153,7 +181,7 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
         attribution: "",
         maxZoom: 19,
       }).addTo(map);
-
+      
       map.attributionControl.setPrefix("");
       map.attributionControl.remove();
 
@@ -193,10 +221,10 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
     });
     markersRef.current = [];
 
-    const markers: L.Marker[] = [];
-    locationsWithCounts.forEach((location) => {
-      const marker = L.marker([location.lat, location.lng]).addTo(map);
-      const popupContent = `
+      const markers: L.Marker[] = [];
+      locationsWithCounts.forEach((location) => {
+        const marker = L.marker([location.lat, location.lng]).addTo(map);
+        const popupContent = `
           <div style="padding: 8px; min-width: 150px;">
             <h3 style="margin: 0 0 8px 0; font-weight: bold; font-size: 16px; color: #000;">
               ${location.name}
@@ -206,22 +234,22 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
             </p>
           </div>
         `;
-      marker.bindPopup(popupContent);
-      markers.push(marker);
-    });
+        marker.bindPopup(popupContent);
+        markers.push(marker);
+      });
 
-    markersRef.current = markers;
+      markersRef.current = markers;
 
-    if (markers.length > 0) {
-      const group = new L.FeatureGroup(markers);
-      map.fitBounds(group.getBounds().pad(0.1));
-    }
-
-    setTimeout(() => {
-      if (mapInstanceRef.current && mapInstanceRef.current._container) {
-        mapInstanceRef.current.invalidateSize();
+      if (markers.length > 0) {
+        const group = new L.FeatureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
       }
-    }, 100);
+
+      setTimeout(() => {
+      if (mapInstanceRef.current && mapInstanceRef.current._container) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 100);
   }, [locationsWithCounts]);
 
   // Invalidate map size when it becomes visible (for animation)
@@ -243,7 +271,7 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
       className={`container mx-auto px-3 sm:px-4 mb-12 sm:mb-16 md:mb-20 scroll-mt-20 ${className}`}
     >
       <h2 
-        className={`text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${
+        className={`text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${
           isVisible 
             ? 'opacity-100 translate-x-0' 
             : 'opacity-0 -translate-x-12'

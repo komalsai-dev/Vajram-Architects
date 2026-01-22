@@ -13,6 +13,8 @@ import WorkWithUs from "@/pages/work-with-us";
 import About from "@/pages/about";
 import ClientPortfolio from "@/pages/client-portfolio";
 import Admin from "@/pages/admin";
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
 
 function Router() {
   return (
@@ -21,6 +23,8 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/work-with-us" component={WorkWithUs} />
       <Route path="/about" component={About} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/client/:id">
         {(params) => <ClientPortfolio clientId={params.id} />}
       </Route>
