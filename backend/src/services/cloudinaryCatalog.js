@@ -10,6 +10,7 @@ const EXCLUDED_FOLDERS = [
   "home-page",
   "projects",
   "samples",
+  "vajram_config",
 ];
 
 const titleCase = (value) =>

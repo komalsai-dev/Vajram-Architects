@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Country, State, City } from "country-state-city";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowUp, ArrowDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -66,9 +66,17 @@ export default function Admin() {
 
   const locationsQuery = useQuery<Location[]>({
     queryKey: [apiUrl("/api/locations")],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
   const projectsQuery = useQuery<Project[]>({
     queryKey: [apiUrl("/api/projects")],
+  });
+  const orderQuery = useQuery<{ locations: string[], projects: Record<string, string[]> }>({
+    queryKey: [apiUrl("/api/locations/order")],
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const fallbackLocations = useMemo<Location[]>(() => {
@@ -82,6 +90,50 @@ export default function Admin() {
       };
     });
   }, []);
+
+  // ... (fallbackProjects logic omitted for brevity as it is unchanged)
+
+  const locations = useMemo(() => {
+    const apiLocations = locationsQuery.data || [];
+    const merged = new Map<string, Location>();
+
+    // Populate with fallback
+    fallbackLocations.forEach((location) => {
+      merged.set(location.id, { ...location });
+    });
+
+    // Update with API data
+    apiLocations.forEach((location) => {
+      const existing = merged.get(location.id);
+      if (existing) {
+        merged.set(location.id, {
+          ...existing,
+          name: location.name || existing.name,
+          stateOrCountry:
+            location.stateOrCountry || existing.stateOrCountry || "",
+        });
+      } else {
+        merged.set(location.id, location);
+      }
+    });
+
+    // Get order from API or default to fallback order
+    const orderList = orderQuery.data?.locations || [];
+
+    if (orderList.length > 0) {
+      const orderMap = new Map(orderList.map((id, index) => [id, index]));
+      return Array.from(merged.values()).sort((a, b) => {
+        const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
+        const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+        // If both are not in orderMap (9999), preserve relative order (or sort by name)
+        if (indexA === indexB) return 0;
+        return indexA - indexB;
+      });
+    }
+
+    // Default: use API order then fallback (as implemented before, or just return values)
+    return Array.from(merged.values());
+  }, [fallbackLocations, locationsQuery.data, orderQuery.data]);
 
   const fallbackProjects = useMemo<Project[]>(() => {
     const seenLocations = new Set<string>();
@@ -107,27 +159,7 @@ export default function Admin() {
     }, []);
   }, []);
 
-  const locations = useMemo(() => {
-    const apiLocations = locationsQuery.data || [];
-    const merged = new Map<string, Location>();
-    fallbackLocations.forEach((location) => {
-      merged.set(location.id, { ...location });
-    });
-    apiLocations.forEach((location) => {
-      const existing = merged.get(location.id);
-      if (existing) {
-        merged.set(location.id, {
-          ...existing,
-          name: location.name || existing.name,
-          stateOrCountry:
-            location.stateOrCountry || existing.stateOrCountry || "",
-        });
-      } else {
-        merged.set(location.id, location);
-      }
-    });
-    return Array.from(merged.values());
-  }, [fallbackLocations, locationsQuery.data]);
+
 
   const projects = useMemo(() => {
     const apiProjects = projectsQuery.data || [];
@@ -192,6 +224,10 @@ export default function Admin() {
   const [openSelect, setOpenSelect] = useState<
     "newCountry" | "newState" | "newCity" | "editCountry" | "editState" | "editCity" | null
   >(null);
+
+  const [orderedLocationIds, setOrderedLocationIds] = useState<string[]>([]);
+  const [hasOrderChanges, setHasOrderChanges] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId),
@@ -382,9 +418,9 @@ export default function Admin() {
     setEditProjectCityData(
       cityData
         ? {
-            latitude: cityData.latitude,
-            longitude: cityData.longitude,
-          }
+          latitude: cityData.latitude,
+          longitude: cityData.longitude,
+        }
         : null
     );
   }, [editProjectCities, editProjectCity]);
@@ -448,6 +484,43 @@ export default function Admin() {
       setEditProjectCity
     );
   }, [activeProject, countries, locations]);
+
+  // Sync local order state with Cloudinary order data
+  useEffect(() => {
+    // Don't update while saving or if user has unsaved changes
+    if (hasOrderChanges || isSavingOrder) return;
+    // Don't update if locations aren't loaded yet
+    if (locations.length === 0) return;
+
+    const savedOrder = orderQuery.data?.locations || [];
+    const allLocationIds = locations.map((l) => l.id);
+
+    let targetOrder: string[];
+
+    if (savedOrder.length > 0) {
+      // Use saved order, but ensure all current locations are included
+      targetOrder = [...savedOrder];
+      // Add any locations not in saved order to the end
+      allLocationIds.forEach((id) => {
+        if (!targetOrder.includes(id)) {
+          targetOrder.push(id);
+        }
+      });
+      // Remove any saved IDs that no longer exist
+      targetOrder = targetOrder.filter((id) => allLocationIds.includes(id));
+    } else {
+      // No saved order yet, use default location order
+      targetOrder = allLocationIds;
+    }
+
+    // Only update if different
+    setOrderedLocationIds((prev) => {
+      if (prev.length === targetOrder.length && prev.every((id, i) => id === targetOrder[i])) {
+        return prev;
+      }
+      return targetOrder;
+    });
+  }, [locations, orderQuery.data, hasOrderChanges, isSavingOrder]);
 
   const handleSavePassword = async () => {
     const trimmed = passwordInput.trim();
@@ -590,6 +663,37 @@ export default function Admin() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [apiUrl("/api/projects")] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/locations")] });
+    },
+  });
+
+  const updateOrderMutation = useMutation({
+    mutationFn: async (locationsIds: string[]) => {
+      return adminRequest(
+        "/api/admin/order/locations",
+        adminPassword,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locations: locationsIds }),
+        }
+      );
+    },
+    onSuccess: (_: any, locationsIds: string[]) => {
+      // 1. Manually update the query caches for all order-dependent queries.
+      // This is the "Optimistic Update" that prevents the order from reverting during the network lap.
+      const newData = {
+        locations: locationsIds,
+        projects: orderQuery.data?.projects || {}
+      };
+
+      // Update both the admin-specific and the public order caches
+      queryClient.setQueryData([apiUrl("/api/admin/order")], newData);
+      queryClient.setQueryData([apiUrl("/api/locations/order")], newData);
+
+      // 2. Invalidate queries to ensure server stays in sync, but don't wait for them.
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/admin/order")] });
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/locations/order")] });
       queryClient.invalidateQueries({ queryKey: [apiUrl("/api/locations")] });
     },
   });
@@ -755,6 +859,37 @@ export default function Admin() {
     }
   };
 
+  const moveLocation = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === orderedLocationIds.length - 1) return;
+
+    const newOrder = [...orderedLocationIds];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    [newOrder[index], newOrder[targetIndex]] = [
+      newOrder[targetIndex],
+      newOrder[index],
+    ];
+
+    setOrderedLocationIds(newOrder);
+    setHasOrderChanges(true);
+  };
+
+  const handleSaveOrder = async () => {
+    if (isSavingOrder || !hasOrderChanges) return;
+    setIsSavingOrder(true);
+    try {
+      await updateOrderMutation.mutateAsync(orderedLocationIds);
+      // Only reset the dirty flag AFTER successful mutation
+      setHasOrderChanges(false);
+      alert("Display order saved successfully!");
+    } catch (error) {
+      console.error("Failed to save order:", error);
+      alert("Failed to save order. Please try again.");
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
   const handleDeleteProject = (project: Project) => {
     if (deletingProjectId) {
       return;
@@ -786,20 +921,24 @@ export default function Admin() {
             : "container mx-auto px-3 sm:px-4 min-h-screen flex items-center justify-center py-10 sm:py-12"
         }
       >
-        <div className={adminPassword ? "" : "w-full max-w-md text-center"}>
-          <h1
-            className={
-              adminPassword
-                ? "text-3xl sm:text-4xl font-normal font-serif tracking-[0.02em] mb-8"
-                : "text-3xl sm:text-4xl font-normal font-serif tracking-[0.02em] mb-6"
-            }
-          >
-            Admin Panel
-          </h1>
+        <div className={adminPassword ? "" : "w-full max-w-md text-center -mt-20"}>
+          {adminPassword ? (
+            <h1 className="text-3xl sm:text-4xl font-normal font-serif tracking-[0.02em] mb-8 text-center">
+              Admin Panel
+            </h1>
+          ) : (
+            <div className="flex justify-center items-center w-full -mb-8 sm:-mb-10 relative z-10">
+              <img
+                src="https://res.cloudinary.com/da9ppibpk/image/upload/v1768016099/logo_rwoit1.png"
+                alt="Vajram Architects"
+                className="h-32 sm:h-40 md:h-48 w-auto max-w-full object-contain mx-auto mr-20"
+              />
+            </div>
+          )}
 
           {!adminPassword ? (
             <div className="bg-gray-950 border border-gray-800 rounded-lg p-5 sm:p-6 shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Admin Login</h2>
+              <h2 className="text-lg font-normal font-serif tracking-[0.02em] mb-4">Admin Login</h2>
               <div className="flex flex-col gap-4">
                 <div className="relative">
                   <Input
@@ -835,303 +974,127 @@ export default function Admin() {
             </div>
           ) : (
             <div className="space-y-10">
-            <div className="flex flex-wrap gap-3 items-center">
-              <span className="text-sm text-gray-400">
-                Admin mode active
-              </span>
-              <Button
-                variant="outline"
-                onClick={handleLogout}
-                className="uppercase tracking-widest text-xs cursor-pointer"
-              >
-                Log out
-              </Button>
-            </div>
+              <div className="flex flex-wrap gap-3 items-center">
+                <span className="text-sm text-gray-400">
+                  Admin mode active
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="uppercase tracking-widest text-xs cursor-pointer hover:bg-red-600 hover:text-white hover:border-red-600"
+                >
+                  Log out
+                </Button>
+              </div>
 
-            <section className="bg-gray-950/70 border border-gray-800 rounded-lg p-6 space-y-10 backdrop-blur">
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Add New Project</h2>
-                <div className="grid gap-4 md:grid-cols-6 mb-4">
-                  <Input
-                    placeholder="Client name"
-                    value={newProjectForm.name}
-                    onChange={(e) =>
-                      setNewProjectForm((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
-                    className="cursor-pointer"
-                  />
-                  <Select
-                    open={openSelect === "newCountry"}
-                    onOpenChange={(open) =>
-                      setOpenSelect(open ? "newCountry" : null)
-                    }
-                    value={newProjectCountryIso}
-                    onValueChange={(iso) => {
-                      setNewProjectCountryIso(iso);
-                      setNewProjectStateIso("");
-                      setNewProjectCity("");
-                      setNewProjectCityData(null);
-                    }}
-                  >
-                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                      <span className={newCountryLabel ? "truncate" : "truncate text-gray-400"}>
-                        {newCountryLabel || "Select country"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent
-                      side="bottom"
-                      avoidCollisions={false}
-                      className="admin-select-scroll max-h-60 overflow-y-auto"
-                    >
-                      {openSelect === "newCountry" ? countryOptions : null}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    open={openSelect === "newState"}
-                    onOpenChange={(open) =>
-                      setOpenSelect(open ? "newState" : null)
-                    }
-                    value={newProjectStateIso}
-                    onValueChange={(iso) => {
-                      setNewProjectStateIso(iso);
-                      setNewProjectCity("");
-                      setNewProjectCityData(null);
-                    }}
-                    disabled={!newProjectCountryIso || newProjectStates.length === 0}
-                  >
-                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
-                      <span className={newStateLabel ? "truncate" : "truncate text-gray-400"}>
-                        {newStateLabel || "Select state"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent
-                      side="bottom"
-                      avoidCollisions={false}
-                      className="admin-select-scroll max-h-60 overflow-y-auto"
-                    >
-                      {openSelect === "newState" ? newProjectStateOptions : null}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    open={openSelect === "newCity"}
-                    onOpenChange={(open) =>
-                      setOpenSelect(open ? "newCity" : null)
-                    }
-                    value={newProjectCity}
-                    onValueChange={(value) => {
-                      setNewProjectCity(value);
-                      const cityData = findCityData(newProjectCities, value);
-                      setNewProjectCityData(
-                        cityData
-                          ? {
-                              latitude: cityData.latitude,
-                              longitude: cityData.longitude,
-                            }
-                          : null
-                      );
-                    }}
-                    disabled={!newProjectStateIso || newProjectCities.length === 0}
-                  >
-                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
-                      <span className={newProjectCity ? "truncate" : "truncate text-gray-400"}>
-                        {newProjectCity || "Select city"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent
-                      side="bottom"
-                      avoidCollisions={false}
-                      className="admin-select-scroll max-h-60 overflow-y-auto"
-                    >
-                      {openSelect === "newCity" ? newProjectCityOptions : null}
-                    </SelectContent>
-                  </Select>
-                  <div className="md:col-span-6 grid gap-4 md:grid-cols-4 items-center">
-                    <Select
-                      value={newProjectLabel}
-                      onValueChange={(value) =>
-                        setNewProjectLabel(value as "Interior" | "Exterior")
+              <section className="bg-gray-950/70 border border-gray-800 rounded-lg p-6 space-y-10">
+                <div>
+                  <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">Add New Project</h2>
+                  <div className="grid gap-4 md:grid-cols-6 mb-4">
+                    <Input
+                      placeholder="Client name"
+                      value={newProjectForm.name}
+                      onChange={(e) =>
+                        setNewProjectForm((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
                       }
+                      className="cursor-pointer"
+                    />
+                    <Select
+                      open={openSelect === "newCountry"}
+                      onOpenChange={(open) =>
+                        setOpenSelect(open ? "newCountry" : null)
+                      }
+                      value={newProjectCountryIso}
+                      onValueChange={(iso) => {
+                        setNewProjectCountryIso(iso);
+                        setNewProjectStateIso("");
+                        setNewProjectCity("");
+                        setNewProjectCityData(null);
+                      }}
                     >
-                    <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                        <SelectValue placeholder="Image type" />
+                      <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                        <span className={newCountryLabel ? "truncate" : "truncate text-gray-400"}>
+                          {newCountryLabel || "Select country"}
+                        </span>
                       </SelectTrigger>
                       <SelectContent
                         side="bottom"
                         avoidCollisions={false}
                         className="admin-select-scroll max-h-60 overflow-y-auto"
                       >
-                        <SelectItem value="Exterior">Exterior</SelectItem>
-                        <SelectItem value="Interior">Interior</SelectItem>
+                        {openSelect === "newCountry" ? countryOptions : null}
                       </SelectContent>
                     </Select>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) =>
-                        handleNewProjectFilesChange(
-                          Array.from(e.target.files || [])
-                        )
+                    <Select
+                      open={openSelect === "newState"}
+                      onOpenChange={(open) =>
+                        setOpenSelect(open ? "newState" : null)
                       }
-                      className="text-sm text-gray-300 md:col-span-2 border border-gray-700 rounded-md px-3 py-2 cursor-pointer"
-                    />
-                    <Button
-                      onClick={handleAddProject}
-                      disabled={
-                        isAddingProject ||
-                        !newProjectForm.name ||
-                        !newProjectCity ||
-                        newProjectFiles.length === 0
-                      }
-                      className={`uppercase tracking-widest text-xs cursor-pointer ${
-                        isAddingProject ? "animate-pulse" : ""
-                      }`}
+                      value={newProjectStateIso}
+                      onValueChange={(iso) => {
+                        setNewProjectStateIso(iso);
+                        setNewProjectCity("");
+                        setNewProjectCityData(null);
+                      }}
+                      disabled={!newProjectCountryIso || newProjectStates.length === 0}
                     >
-                      {isAddingProject ? "Adding..." : "Add Project"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {activeProject && (
-                <>
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">
-                      Edit Project
-                    </h2>
-                    <div className="grid gap-4 md:grid-cols-6">
-                      <Input
-                        placeholder="Client name"
-                        value={editProjectForm.name}
-                        onChange={(e) =>
-                          setEditProjectForm((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
-                        }
-                        className="cursor-pointer"
-                      />
-                      <Select
-                        open={openSelect === "editCountry"}
-                        onOpenChange={(open) =>
-                          setOpenSelect(open ? "editCountry" : null)
-                        }
-                        value={editProjectCountryIso}
-                        onValueChange={(iso) => {
-                          setEditProjectCountryIso(iso);
-                          setEditProjectStateIso("");
-                          setEditProjectCity("");
-                          setEditProjectCityData(null);
-                        }}
+                      <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
+                        <span className={newStateLabel ? "truncate" : "truncate text-gray-400"}>
+                          {newStateLabel || "Select state"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent
+                        side="bottom"
+                        avoidCollisions={false}
+                        className="admin-select-scroll max-h-60 overflow-y-auto"
                       >
-                        <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                          <span className={editCountryLabel ? "truncate" : "truncate text-gray-400"}>
-                            {editCountryLabel || "Select country"}
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent
-                          side="bottom"
-                          avoidCollisions={false}
-                          className="admin-select-scroll max-h-60 overflow-y-auto"
-                        >
-                          {openSelect === "editCountry" ? countryOptions : null}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        open={openSelect === "editState"}
-                        onOpenChange={(open) =>
-                          setOpenSelect(open ? "editState" : null)
-                        }
-                        value={editProjectStateIso}
-                        onValueChange={(iso) => {
-                          setEditProjectStateIso(iso);
-                          setEditProjectCity("");
-                          setEditProjectCityData(null);
-                        }}
+                        {openSelect === "newState" ? newProjectStateOptions : null}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      open={openSelect === "newCity"}
+                      onOpenChange={(open) =>
+                        setOpenSelect(open ? "newCity" : null)
+                      }
+                      value={newProjectCity}
+                      onValueChange={(value) => {
+                        setNewProjectCity(value);
+                        const cityData = findCityData(newProjectCities, value);
+                        setNewProjectCityData(
+                          cityData
+                            ? {
+                              latitude: cityData.latitude,
+                              longitude: cityData.longitude,
+                            }
+                            : null
+                        );
+                      }}
+                      disabled={!newProjectStateIso || newProjectCities.length === 0}
+                    >
+                      <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
+                        <span className={newProjectCity ? "truncate" : "truncate text-gray-400"}>
+                          {newProjectCity || "Select city"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent
+                        side="bottom"
+                        avoidCollisions={false}
+                        className="admin-select-scroll max-h-60 overflow-y-auto"
                       >
-                        <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                          <span className={editStateLabel ? "truncate" : "truncate text-gray-400"}>
-                            {editStateLabel || "Select state"}
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent
-                          side="bottom"
-                          avoidCollisions={false}
-                          className="admin-select-scroll max-h-60 overflow-y-auto"
-                        >
-                          {openSelect === "editState" ? editProjectStateOptions : null}
-                        </SelectContent>
-                      </Select>
+                        {openSelect === "newCity" ? newProjectCityOptions : null}
+                      </SelectContent>
+                    </Select>
+                    <div className="md:col-span-6 grid gap-4 md:grid-cols-4 items-center">
                       <Select
-                        open={openSelect === "editCity"}
-                        onOpenChange={(open) =>
-                          setOpenSelect(open ? "editCity" : null)
-                        }
-                        value={editProjectCity}
-                        onValueChange={(value) => {
-                          setEditProjectCity(value);
-                          const cityData = findCityData(editProjectCities, value);
-                          setEditProjectCityData(
-                            cityData
-                              ? {
-                                  latitude: cityData.latitude,
-                                  longitude: cityData.longitude,
-                                }
-                              : null
-                          );
-                        }}
-                      >
-                        <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
-                          <span className={editProjectCity ? "truncate" : "truncate text-gray-400"}>
-                            {editProjectCity || "Select city"}
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent
-                          side="bottom"
-                          avoidCollisions={false}
-                          className="admin-select-scroll max-h-60 overflow-y-auto"
-                        >
-                          {openSelect === "editCity" ? editProjectCityOptions : null}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        placeholder="Cover image URL"
-                        value={editProjectForm.coverImageUrl}
-                        onChange={(e) =>
-                          setEditProjectForm((prev) => ({
-                            ...prev,
-                            coverImageUrl: e.target.value,
-                          }))
-                        }
-                        className="cursor-pointer"
-                      />
-                      <Button
-                        onClick={handleSaveChanges}
-                        disabled={isSavingProject}
-                        className={`uppercase tracking-widest text-xs md:col-span-6 cursor-pointer ${
-                          isSavingProject ? "animate-pulse" : ""
-                        }`}
-                      >
-                        {isSavingProject ? "Saving..." : "Save Changes"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">
-                      Upload Images
-                    </h2>
-                    <div className="grid gap-4 md:grid-cols-4 items-center">
-                      <Select
-                        value={uploadLabel}
+                        value={newProjectLabel}
                         onValueChange={(value) =>
-                          setUploadLabel(value as "Interior" | "Exterior")
+                          setNewProjectLabel(value as "Interior" | "Exterior")
                         }
                       >
-                      <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                        <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
                           <SelectValue placeholder="Image type" />
                         </SelectTrigger>
                         <SelectContent
@@ -1148,159 +1111,397 @@ export default function Admin() {
                         multiple
                         accept="image/*"
                         onChange={(e) =>
-                          handleFilesChange(
+                          handleNewProjectFilesChange(
                             Array.from(e.target.files || [])
                           )
                         }
                         className="text-sm text-gray-300 md:col-span-2 border border-gray-700 rounded-md px-3 py-2 cursor-pointer"
                       />
                       <Button
-                        onClick={handleUploadImages}
-                        disabled={isUploadingImages || !uploadFiles.length}
-                        className={`uppercase tracking-widest text-xs cursor-pointer ${
-                          isUploadingImages ? "animate-pulse" : ""
-                        }`}
+                        onClick={handleAddProject}
+                        disabled={
+                          isAddingProject ||
+                          !newProjectForm.name ||
+                          !newProjectCity ||
+                          newProjectFiles.length === 0
+                        }
+                        className={`uppercase tracking-widest text-xs cursor-pointer ${isAddingProject ? "animate-pulse" : ""
+                          }`}
                       >
-                        {isUploadingImages ? "Uploading..." : "Upload Images"}
+                        {isAddingProject ? "Adding..." : "Add Project"}
                       </Button>
                     </div>
                   </div>
+                </div>
 
-                  <div>
-                    <h2 className="text-xl font-semibold mb-4">
-                      Manage Images
-                    </h2>
-                    <div className="space-y-3">
-                      {(activeProject.images || []).map((image: ProjectImage) => (
-                        <div
-                          key={image.id}
-                          className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
+                {activeProject && (
+                  <>
+                    <div>
+                      <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">
+                        Edit Project
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-6">
+                        <Input
+                          placeholder="Client name"
+                          value={editProjectForm.name}
+                          onChange={(e) =>
+                            setEditProjectForm((prev) => ({
+                              ...prev,
+                              name: e.target.value,
+                            }))
+                          }
+                          className="cursor-pointer"
+                        />
+                        <Select
+                          open={openSelect === "editCountry"}
+                          onOpenChange={(open) =>
+                            setOpenSelect(open ? "editCountry" : null)
+                          }
+                          value={editProjectCountryIso}
+                          onValueChange={(iso) => {
+                            setEditProjectCountryIso(iso);
+                            setEditProjectStateIso("");
+                            setEditProjectCity("");
+                            setEditProjectCityData(null);
+                          }}
                         >
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={image.url}
-                              alt={image.label}
-                              className="h-12 w-16 object-cover rounded-md"
-                            />
-                            <div>
-                              <p className="text-sm">{image.label}</p>
-                              <p className="text-xs text-gray-500">
-                                {image.url.slice(-24)}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              deleteImageMutation.mutate({
-                                projectId: activeProject.id,
-                                imageId: image.id,
-                              })
-                            }
-                            className="uppercase tracking-widest text-[10px] cursor-pointer"
+                          <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                            <span className={editCountryLabel ? "truncate" : "truncate text-gray-400"}>
+                              {editCountryLabel || "Select country"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent
+                            side="bottom"
+                            avoidCollisions={false}
+                            className="admin-select-scroll max-h-60 overflow-y-auto"
                           >
-                            Delete
-                          </Button>
-                        </div>
-                      ))}
+                            {openSelect === "editCountry" ? countryOptions : null}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          open={openSelect === "editState"}
+                          onOpenChange={(open) =>
+                            setOpenSelect(open ? "editState" : null)
+                          }
+                          value={editProjectStateIso}
+                          onValueChange={(iso) => {
+                            setEditProjectStateIso(iso);
+                            setEditProjectCity("");
+                            setEditProjectCityData(null);
+                          }}
+                        >
+                          <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                            <span className={editStateLabel ? "truncate" : "truncate text-gray-400"}>
+                              {editStateLabel || "Select state"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent
+                            side="bottom"
+                            avoidCollisions={false}
+                            className="admin-select-scroll max-h-60 overflow-y-auto"
+                          >
+                            {openSelect === "editState" ? editProjectStateOptions : null}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          open={openSelect === "editCity"}
+                          onOpenChange={(open) =>
+                            setOpenSelect(open ? "editCity" : null)
+                          }
+                          value={editProjectCity}
+                          onValueChange={(value) => {
+                            setEditProjectCity(value);
+                            const cityData = findCityData(editProjectCities, value);
+                            setEditProjectCityData(
+                              cityData
+                                ? {
+                                  latitude: cityData.latitude,
+                                  longitude: cityData.longitude,
+                                }
+                                : null
+                            );
+                          }}
+                        >
+                          <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                            <span className={editProjectCity ? "truncate" : "truncate text-gray-400"}>
+                              {editProjectCity || "Select city"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent
+                            side="bottom"
+                            avoidCollisions={false}
+                            className="admin-select-scroll max-h-60 overflow-y-auto"
+                          >
+                            {openSelect === "editCity" ? editProjectCityOptions : null}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          placeholder="Cover image URL"
+                          value={editProjectForm.coverImageUrl}
+                          onChange={(e) =>
+                            setEditProjectForm((prev) => ({
+                              ...prev,
+                              coverImageUrl: e.target.value,
+                            }))
+                          }
+                          className="cursor-pointer"
+                        />
+                        <Button
+                          onClick={handleSaveChanges}
+                          disabled={isSavingProject}
+                          className={`uppercase tracking-widest text-xs md:col-span-6 cursor-pointer ${isSavingProject ? "animate-pulse" : ""
+                            }`}
+                        >
+                          {isSavingProject ? "Saving..." : "Save Changes"}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
 
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Existing Projects</h2>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Button
-                    variant={selectedState ? "outline" : "default"}
-                    onClick={() => {
-                      setSelectedState("");
-                      setSelectedCity("");
-                    }}
-                    className="uppercase tracking-widest text-[10px] cursor-pointer"
-                  >
-                    All States
-                  </Button>
-                  {stateOptions.map((state) => (
+                    <div>
+                      <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">
+                        Upload Images
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-4 items-center">
+                        <Select
+                          value={uploadLabel}
+                          onValueChange={(value) =>
+                            setUploadLabel(value as "Interior" | "Exterior")
+                          }
+                        >
+                          <SelectTrigger className="bg-gray-950 border border-gray-800 text-sm cursor-pointer">
+                            <SelectValue placeholder="Image type" />
+                          </SelectTrigger>
+                          <SelectContent
+                            side="bottom"
+                            avoidCollisions={false}
+                            className="admin-select-scroll max-h-60 overflow-y-auto"
+                          >
+                            <SelectItem value="Exterior">Exterior</SelectItem>
+                            <SelectItem value="Interior">Interior</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFilesChange(
+                              Array.from(e.target.files || [])
+                            )
+                          }
+                          className="text-sm text-gray-300 md:col-span-2 border border-gray-700 rounded-md px-3 py-2 cursor-pointer"
+                        />
+                        <Button
+                          onClick={handleUploadImages}
+                          disabled={isUploadingImages || !uploadFiles.length}
+                          className={`uppercase tracking-widest text-xs cursor-pointer ${isUploadingImages ? "animate-pulse" : ""
+                            }`}
+                        >
+                          {isUploadingImages ? "Uploading..." : "Upload Images"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">
+                        Manage Images
+                      </h2>
+                      <div className="space-y-3">
+                        {(activeProject.images || []).map((image: ProjectImage) => (
+                          <div
+                            key={image.id}
+                            className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={image.url}
+                                alt={image.label}
+                                className="h-12 w-16 object-cover rounded-md"
+                              />
+                              <div>
+                                <p className="text-sm">{image.label}</p>
+                                <p className="text-xs text-gray-500">
+                                  {image.url.slice(-24)}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                deleteImageMutation.mutate({
+                                  projectId: activeProject.id,
+                                  imageId: image.id,
+                                })
+                              }
+                              className="uppercase tracking-widest text-[10px] cursor-pointer"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">Existing Projects</h2>
+                  <div className="flex flex-wrap gap-2 mb-4">
                     <Button
-                      key={state}
-                      variant={selectedState === state ? "default" : "outline"}
+                      variant={selectedState ? "outline" : "default"}
                       onClick={() => {
-                        setSelectedState(state);
+                        setSelectedState("");
                         setSelectedCity("");
                       }}
                       className="uppercase tracking-widest text-[10px] cursor-pointer"
                     >
-                      {state}
+                      All States
                     </Button>
-                  ))}
-                </div>
-                {selectedState && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Button
-                      variant={selectedCity ? "outline" : "default"}
-                      onClick={() => setSelectedCity("")}
-                      className="uppercase tracking-widest text-[10px] cursor-pointer"
-                    >
-                      All Cities
-                    </Button>
-                    {cityOptions.map((city) => (
+                    {stateOptions.map((state) => (
                       <Button
-                        key={city}
-                        variant={selectedCity === city ? "default" : "outline"}
-                        onClick={() => setSelectedCity(city)}
+                        key={state}
+                        variant={selectedState === state ? "default" : "outline"}
+                        onClick={() => {
+                          setSelectedState(state);
+                          setSelectedCity("");
+                        }}
                         className="uppercase tracking-widest text-[10px] cursor-pointer"
                       >
-                        {city}
+                        {state}
                       </Button>
                     ))}
                   </div>
-                )}
-                <div className="space-y-2">
-                  {filteredProjects.map((project) => {
-                    const location = locationById.get(project.locationId);
-                    const state = location?.stateOrCountry || "Unknown";
-                    const city = location?.name || project.locationId;
-                    return (
-                      <div
-                        key={project.id}
-                        className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
+                  {selectedState && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <Button
+                        variant={selectedCity ? "outline" : "default"}
+                        onClick={() => setSelectedCity("")}
+                        className="uppercase tracking-widest text-[10px] cursor-pointer"
                       >
-                        <div>
-                          <p className="font-medium">{project.name}</p>
-                          <p className="text-xs text-gray-400">
-                            {city} · {state} · {project.images?.length || 0} images
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => setActiveProjectId(project.id)}
-                            className="uppercase tracking-widest text-[10px] cursor-pointer hover:bg-green-600 hover:text-white hover:border-green-600"
-                          >
-                            Manage
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => handleDeleteProject(project)}
-                            disabled={deletingProjectId === project.id}
-                            className={`uppercase tracking-widest text-[10px] cursor-pointer hover:bg-red-600 hover:text-white hover:border-red-600 ${
-                              deletingProjectId === project.id
+                        All Cities
+                      </Button>
+                      {cityOptions.map((city) => (
+                        <Button
+                          key={city}
+                          variant={selectedCity === city ? "default" : "outline"}
+                          onClick={() => setSelectedCity(city)}
+                          className="uppercase tracking-widest text-[10px] cursor-pointer"
+                        >
+                          {city}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                    {filteredProjects.map((project) => {
+                      const location = locationById.get(project.locationId);
+                      return (
+                        <div
+                          key={project.id}
+                          className="flex items-center justify-between bg-black/40 border border-gray-800 rounded px-4 py-3"
+                        >
+                          <div>
+                            <span className="block text-sm font-medium">
+                              {project.name}
+                            </span>
+                            <span className="block text-xs text-gray-400">
+                              {location?.name || project.locationId}
+                              {" · "}
+                              {location?.stateOrCountry || "Unknown"}
+                              {" · "}
+                              {project.images?.length ?? 0} images
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setActiveProjectId(project.id);
+                              }}
+                              className="uppercase tracking-widest text-[10px] cursor-pointer hover:bg-green-600 hover:text-white hover:border-green-600"
+                            >
+                              Manage
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleDeleteProject(project)}
+                              disabled={
+                                !!deletingProjectId ||
+                                !!confirmDeleteProject
+                              }
+                              className={`uppercase tracking-widest text-[10px] cursor-pointer hover:bg-red-600 hover:text-white hover:border-red-600 ${deletingProjectId === project.id
                                 ? "animate-pulse"
                                 : ""
-                            }`}
-                          >
-                            {deletingProjectId === project.id
-                              ? "Deleting..."
-                              : "Delete"}
-                          </Button>
+                                }`}
+                            >
+                              {deletingProjectId === project.id
+                                ? "Deleting..."
+                                : "Delete"}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            </section>
+
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-normal font-serif tracking-[0.02em]">
+                      Display Order
+                    </h2>
+                    {hasOrderChanges && (
+                      <Button
+                        onClick={handleSaveOrder}
+                        disabled={isSavingOrder}
+                        className={`uppercase tracking-widest text-xs cursor-pointer ${isSavingOrder ? "animate-pulse" : ""
+                          }`}
+                      >
+                        {isSavingOrder ? "Saving..." : "Save Order"}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto bg-black/20 p-2 rounded border border-gray-800 mb-8 order-scroll-list">
+                    {orderedLocationIds.map((locId, index) => {
+                      const loc = locationById.get(locId);
+                      if (!loc) return null;
+                      return (
+                        <div
+                          key={locId}
+                          className="flex items-center justify-between bg-black/40 border border-gray-800 rounded px-3 py-2"
+                        >
+                          <span className="text-sm">
+                            {loc.name}{" "}
+                            {loc.stateOrCountry
+                              ? `(${loc.stateOrCountry})`
+                              : ""}
+                          </span>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={index === 0}
+                              onClick={() => moveLocation(index, "up")}
+                              className="h-6 w-6 p-0 hover:bg-gray-800 hover:text-white"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={index === orderedLocationIds.length - 1}
+                              onClick={() => moveLocation(index, "down")}
+                              className="h-6 w-6 p-0 hover:bg-gray-800 hover:text-white"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
             </div>
           )}
         </div>
@@ -1308,7 +1509,7 @@ export default function Admin() {
       {confirmDeleteProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-950/90 p-6 text-center backdrop-blur">
-            <h3 className="text-lg font-semibold mb-2">Delete Project</h3>
+            <h3 className="text-lg font-normal font-serif tracking-[0.02em] mb-2">Delete Project</h3>
             <p className="text-sm text-gray-300 mb-6">
               Do you want to delete the project "{confirmDeleteProject.name}"?
             </p>
@@ -1323,9 +1524,8 @@ export default function Admin() {
               <Button
                 onClick={confirmDelete}
                 disabled={!!deletingProjectId}
-                className={`uppercase tracking-widest text-xs cursor-pointer ${
-                  deletingProjectId ? "animate-pulse" : ""
-                }`}
+                className={`uppercase tracking-widest text-xs cursor-pointer ${deletingProjectId ? "animate-pulse" : ""
+                  }`}
               >
                 {deletingProjectId ? "Deleting..." : "Delete"}
               </Button>

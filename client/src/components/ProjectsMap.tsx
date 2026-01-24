@@ -99,18 +99,18 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
         const coords =
           location.latitude !== undefined && location.longitude !== undefined
             ? {
-                name: location.name,
-                lat: location.latitude,
-                lng: location.longitude,
-                clientCount: 0,
-              }
+              name: location.name,
+              lat: location.latitude,
+              lng: location.longitude,
+              clientCount: 0,
+            }
             : getLocationCoordinates(location.id);
         if (!coords) {
           return null;
         }
         const clientCount = projects.length
           ? projects.filter((project) => project.locationId === location.id)
-              .length
+            .length
           : getClientIdsByLocation(location.id).length;
         return {
           ...coords,
@@ -120,12 +120,12 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
         };
       })
       .filter((loc) => loc !== null) as Array<{
-      name: string;
-      lat: number;
-      lng: number;
-      clientCount: number;
-      key: string;
-    }>;
+        name: string;
+        lat: number;
+        lng: number;
+        clientCount: number;
+        key: string;
+      }>;
   }, [locations, projects]);
 
   const mapRef = useRef<HTMLDivElement>(null);
@@ -181,7 +181,7 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
         attribution: "",
         maxZoom: 19,
       }).addTo(map);
-      
+
       map.attributionControl.setPrefix("");
       map.attributionControl.remove();
 
@@ -221,12 +221,12 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
     });
     markersRef.current = [];
 
-      const markers: L.Marker[] = [];
-      locationsWithCounts.forEach((location) => {
-        const marker = L.marker([location.lat, location.lng]).addTo(map);
-        const popupContent = `
+    const markers: L.Marker[] = [];
+    locationsWithCounts.forEach((location) => {
+      const marker = L.marker([location.lat, location.lng]).addTo(map);
+      const popupContent = `
           <div style="padding: 8px; min-width: 150px;">
-            <h3 style="margin: 0 0 8px 0; font-weight: bold; font-size: 16px; color: #000;">
+            <h3 style="margin: 0 0 8px 0; font-weight: normal; font-size: 16px; color: #000; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; letter-spacing: 0.02em;">
               ${location.name}
             </h3>
             <p style="margin: 0; color: #666; font-size: 14px;">
@@ -234,22 +234,22 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
             </p>
           </div>
         `;
-        marker.bindPopup(popupContent);
-        markers.push(marker);
-      });
+      marker.bindPopup(popupContent);
+      markers.push(marker);
+    });
 
-      markersRef.current = markers;
+    markersRef.current = markers;
 
-      if (markers.length > 0) {
-        const group = new L.FeatureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.1));
-      }
+    if (markers.length > 0) {
+      const group = new L.FeatureGroup(markers);
+      map.fitBounds(group.getBounds().pad(0.1));
+    }
 
-      setTimeout(() => {
+    setTimeout(() => {
       if (mapInstanceRef.current && mapInstanceRef.current._container) {
-          mapInstanceRef.current.invalidateSize();
-        }
-      }, 100);
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 100);
   }, [locationsWithCounts]);
 
   // Invalidate map size when it becomes visible (for animation)
@@ -265,33 +265,31 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
   }, [isVisible]);
 
   return (
-    <section 
+    <section
       ref={sectionRef}
-      id="projects-map" 
+      id="projects-map"
       className={`container mx-auto px-3 sm:px-4 mb-12 sm:mb-16 md:mb-20 scroll-mt-20 ${className}`}
     >
-      <h2 
-        className={`text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${
-          isVisible 
-            ? 'opacity-100 translate-x-0' 
+      <h2
+        className={`text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white transition-all duration-[2000ms] ease-out ${isVisible
+            ? 'opacity-100 translate-x-0'
             : 'opacity-0 -translate-x-12'
-        }`}
+          }`}
       >
         Our Projects Locations
       </h2>
-      <div 
-        className={`w-full h-[300px] sm:h-[350px] md:h-[400px] rounded-lg overflow-hidden border border-gray-800 transition-all duration-[2000ms] ease-out ${
-          isVisible 
-            ? 'opacity-100 translate-y-0 translate-x-0' 
+      <div
+        className={`w-full h-[300px] sm:h-[350px] md:h-[400px] rounded-lg overflow-hidden border border-gray-800 transition-all duration-[2000ms] ease-out ${isVisible
+            ? 'opacity-100 translate-y-0 translate-x-0'
             : 'opacity-0 translate-y-12 translate-x-8'
-        }`}
-        style={{ 
+          }`}
+        style={{
           minHeight: "300px",
           transitionDelay: '0.2s'
         }}
       >
-        <div 
-          ref={mapRef} 
+        <div
+          ref={mapRef}
           className="w-full h-full"
         />
       </div>
@@ -300,12 +298,11 @@ export function ProjectsMap({ className = "" }: ProjectsMapProps) {
           display: none !important;
         }
       `}</style>
-      <p 
-        className={`text-gray-400 text-sm mt-4 text-center transition-all duration-[2000ms] ease-out ${
-          isVisible 
-            ? 'opacity-100 translate-x-0' 
+      <p
+        className={`text-gray-400 text-sm mt-4 text-center transition-all duration-[2000ms] ease-out ${isVisible
+            ? 'opacity-100 translate-x-0'
             : 'opacity-0 -translate-x-12'
-        }`}
+          }`}
         style={{ transitionDelay: '0.4s' }}
       >
         Click on the markers to see project locations and counts. Use the zoom controls, double-click, or drag to interact with the map.

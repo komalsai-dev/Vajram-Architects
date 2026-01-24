@@ -1,12 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+
+import { useQuery } from "@tanstack/react-query";
+import { getAllLocations } from "@/lib/locations-data";
+import { apiUrl } from "@/lib/api";
+import type { Location } from "@/lib/types";
 
 export function Footer() {
   const [isVisible, setIsVisible] = useState(false);
   const footerRef = useRef<HTMLElement>(null);
+  const [location] = useLocation();
+
+  const locationsQuery = useQuery<Location[]>({
+    queryKey: [apiUrl("/api/locations")],
+  });
+
+  // Hardcoded to Guntur as it is the first project section
+  const projectHref = "/#guntur";
 
   // Intersection Observer for scroll-triggered animations
   useEffect(() => {
@@ -15,13 +26,10 @@ export function Footer() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setIsVisible(true);
-          } else {
-            // Reset animation when footer is out of view
-            setIsVisible(false);
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+      { threshold: 0.1 }
     );
 
     if (footerRef.current) {
@@ -35,214 +43,92 @@ export function Footer() {
     };
   }, []);
 
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#")) {
+      const targetId = href.split("#")[1];
+      if (location === "/") {
+        e.preventDefault();
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          // Fallback: try scrolling to a slightly different ID or log warning if needed
+          // But for now, just updating the URL hash manually if element not found immediately isn't ideal without refresh
+          window.history.pushState(null, "", href);
+        }
+      }
+    }
+  };
+
+  const navLinks = [
+    { name: "Home", href: "/" },
+    { name: "Projects", href: projectHref },
+    { name: "About", href: "/about" },
+    { name: "Work With Us", href: "/work-with-us" },
+    { name: "Contact", href: "/contact" },
+    { name: "Terms", href: "/terms" },
+    { name: "Privacy", href: "/privacy" },
+  ];
+
   return (
-    <footer ref={footerRef} className="bg-black text-white pt-10 sm:pt-12 md:pt-16 pb-6 sm:pb-8">
-      <div className="container mx-auto px-3 sm:px-4">
-        {/* Top Section with Subscribe */}
-        <div className="border border-gray-700 p-6 sm:p-8 md:p-12 text-center bg-black text-white mb-10 sm:mb-12 md:mb-16 max-w-4xl mx-auto">
-          <h3 className={`text-xl sm:text-2xl md:text-3xl font-serif mb-3 sm:mb-4 text-white transition-all duration-[1200ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
-              : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-          }`}
-          style={{ transitionDelay: '0.1s' }}>
-            Subscribe
-          </h3>
-          <p className={`text-xs sm:text-sm text-gray-400 mb-6 sm:mb-8 font-sans px-2 transition-all duration-[1200ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
-              : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-          }`}
-          style={{ transitionDelay: '0.2s' }}>
-            Get our latest article and updates delivered straight to your inbox.
-          </p>
-          <div className="max-w-md mx-auto space-y-3 sm:space-y-4">
-            <Input 
-              type="email" 
-              placeholder="EMAIL" 
-              className={`rounded-none border-white bg-black text-white h-10 sm:h-12 text-xs placeholder:text-gray-500 font-sans tracking-wide transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.3s' }}
-            />
-            <Button className={`w-full rounded-none bg-white hover:bg-gray-200 text-black h-10 sm:h-12 text-xs tracking-[0.1em] font-bold transition-all duration-[1200ms] ease-out ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
-                : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-            }`}
-            style={{ transitionDelay: '0.4s' }}>
-              SUBSCRIBE
-            </Button>
-          </div>
-        </div>
+    <footer
+      ref={footerRef}
+      className="bg-[#fcfbf9] text-[#1c1c1c] py-10 sm:py-14 border-t border-gray-200 rounded-t-[3rem]"
+    >
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col items-center justify-center space-y-6">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 md:gap-12 mb-10 sm:mb-12 md:mb-16 border-t border-gray-800 pt-8 sm:pt-10 md:pt-12">
-          {/* Brand Column */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
-             <div className={`flex flex-col items-start mb-4 sm:mb-6 transition-all duration-[1200ms] ease-out ${
-               isVisible 
-                 ? 'opacity-100 translate-x-0' 
-                 : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-             }`}
-             style={{ transitionDelay: '0.1s' }}>
-                <img 
-                  src="/logo.png" 
-                  alt="VAJRAM ARCHITECTS" 
-                  className="h-20 sm:h-24 md:h-28 lg:h-32 w-auto object-contain mb-3"
-                />
-                
-            </div>
+          {/* Logo - Centered Top */}
+          <div className={`flex-shrink-0 transition-all duration-700 ease-out delay-100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <Link href="/">
+              <img
+                src="/android-chrome-512x512.png"
+                alt="Vajram Architects"
+                className="h-20 w-20 object-contain opacity-90 hover:opacity-100 transition-opacity hover:scale-105 transform duration-300"
+              />
+            </Link>
           </div>
 
-          {/* Links Columns */}
-          <div className="col-span-1 space-y-3 sm:space-y-4">
-            <h4 className={`text-xs sm:text-sm uppercase tracking-widest text-gray-400 mb-3 sm:mb-4 border-b border-gray-800 pb-2 transition-all duration-[1200ms] ease-out ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
-                : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-            }`}
-            style={{ transitionDelay: '0.2s' }}>
-              Sections
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-sans text-gray-300">
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.3s' }}>
-                <Link href="/#guntur" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">
-                  Guntur
-                </Link>
-              </li>
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.35s' }}>
-                <Link href="/#hyderabad" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">
-                  Hyderabad
-                </Link>
-              </li>
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.4s' }}>
-                <Link href="/#siddipet" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">
-                  Siddipet
-                </Link>
-              </li>
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.45s' }}>
-                <Link href="/#suryapet" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">
-                  Suryapet
-                </Link>
-              </li>
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.5s' }}>
-                <Link href="/#nirmal" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">
-                  Nirmal
-                </Link>
-              </li>
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.55s' }}>
-                <Link href="/#ireland" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">
-                  Ireland
-                </Link>
-              </li>
-            </ul>
+          {/* 1. Navigation Links */}
+          <nav className={`flex flex-wrap justify-center gap-x-8 gap-y-3 transition-all duration-700 ease-out delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={(e) => handleScroll(e, link.href)}
+                className="text-sm sm:text-base font-medium text-gray-600 hover:text-black transition-colors relative group cursor-pointer"
+              >
+                {link.name}
+                <span className="absolute inset-x-0 bottom-0 h-px bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left"></span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* 2. Social Icons */}
+          <div className={`flex items-center gap-8 text-gray-400 transition-all duration-700 ease-out delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <a href="https://twitter.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
+              <Twitter className="w-5 h-5" />
+            </a>
+            <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
+              <Linkedin className="w-5 h-5" />
+            </a>
+            <a href="https://facebook.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
+              <Facebook className="w-5 h-5" />
+            </a>
+            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
+              <Instagram className="w-5 h-5" />
+            </a>
           </div>
 
-          <div className="col-span-1 space-y-3 sm:space-y-4">
-            <h4 className={`text-xs sm:text-sm uppercase tracking-widest text-gray-400 mb-3 sm:mb-4 border-b border-gray-700 pb-2 transition-all duration-[1200ms] ease-out ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
-                : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-            }`}
-            style={{ transitionDelay: '0.25s' }}>
-              Company
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-sans text-gray-300">
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.3s' }}>
-                <Link href="/contact" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">Contact</Link>
-              </li>
-            </ul>
+          <div className={`text-center pt-2 border-t border-gray-100 w-full max-w-xs sm:max-w-md md:max-w-2xl transition-all duration-700 ease-out delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <p className="text-xs text-gray-400 font-sans tracking-widest uppercase mb-2">
+              © 2025 Vajram Architects
+            </p>
+            <p className="text-[11px] text-gray-500 font-sans tracking-wide font-medium">
+              Developed By <a href="https://scalvion.com/" target="_blank" rel="noopener noreferrer" className="hover:text-gray-800 transition-colors duration-300 cursor-pointer">Scalvion Digital Solutions</a>
+            </p>
           </div>
 
-          <div className="col-span-1 space-y-3 sm:space-y-4">
-            <h4 className={`text-xs sm:text-sm uppercase tracking-widest text-gray-400 mb-3 sm:mb-4 border-b border-gray-700 pb-2 transition-all duration-[1200ms] ease-out ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
-                : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-            }`}
-            style={{ transitionDelay: '0.3s' }}>
-              Legal
-            </h4>
-            <ul className="space-y-2 text-xs sm:text-sm font-sans text-gray-300">
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.35s' }}>
-                <Link href="/terms" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">Terms and Conditions</Link>
-              </li>
-              <li className={`transition-all duration-[1200ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-              }`}
-              style={{ transitionDelay: '0.4s' }}>
-                <Link href="/privacy" className="hover:text-white underline decoration-transparent hover:decoration-white transition-all">Privacy Policy</Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-center pt-6 sm:pt-8 border-t border-gray-800 text-[10px] sm:text-xs text-gray-500 font-sans gap-4">
-          <div className={`flex gap-3 sm:gap-4 transition-all duration-[1200ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
-              : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-          }`}
-          style={{ transitionDelay: '0.4s' }}>
-            <Facebook className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-            <Twitter className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-            <Linkedin className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-            <Instagram className="w-4 h-4 hover:text-white cursor-pointer transition-colors" />
-          </div>
-          
-          <div className={`text-center md:text-right transition-all duration-[1200ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
-              : 'opacity-0 -translate-x-6 sm:-translate-x-8'
-          }`}
-          style={{ transitionDelay: '0.45s' }}>
-            © All rights reserved. VAJRAM ARCHITECTS
-          </div>
         </div>
       </div>
     </footer>

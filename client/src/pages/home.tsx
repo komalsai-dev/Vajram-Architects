@@ -12,52 +12,31 @@ import type { Location, Project } from "@/lib/types";
 
 export default function Home() {
   const [visibleLocationsCount, setVisibleLocationsCount] = useState(4);
-  // Restore scroll position when returning from portfolio page
+  // Handle scroll position when navigating to Home
   useEffect(() => {
-    const navigationEntries = performance.getEntriesByType("navigation");
-    const navigationEntry = navigationEntries[0] as
-      | PerformanceNavigationTiming
-      | undefined;
-    const navigationType = navigationEntry?.type;
-    const isReload =
-      navigationType === "reload" ||
-      (performance as unknown as { navigation?: { type?: number } }).navigation
-        ?.type === 1;
-    const savedScrollPosition = sessionStorage.getItem("homeScrollPosition");
-    const shouldScrollToTop = sessionStorage.getItem("scrollToTop");
-    
-    // If logo was clicked, scroll to top
-    if (shouldScrollToTop === "true") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      sessionStorage.removeItem("scrollToTop");
-      sessionStorage.removeItem("homeScrollPosition");
-      return;
-    }
+    // Always scroll to top first
+    window.scrollTo({ top: 0, behavior: "instant" });
 
-    if (isReload) {
-      window.scrollTo({ top: 0, behavior: "instant" });
-      sessionStorage.removeItem("homeScrollPosition");
-      return;
-    }
-    
+    const savedScrollPosition = sessionStorage.getItem("homeScrollPosition");
+
     if (savedScrollPosition) {
-      // Restore scroll position
+      // Only restore scroll position if returning from portfolio/client page
       const scrollY = parseInt(savedScrollPosition, 10);
       window.scrollTo({ top: scrollY, behavior: "instant" });
-      // Clear the saved position after restoring
       sessionStorage.removeItem("homeScrollPosition");
-    } else {
-      // Handle hash navigation only if no saved scroll position
-    if (window.location.hash) {
+    } else if (window.location.hash) {
+      // Handle hash navigation
       const hash = window.location.hash.substring(1);
       setTimeout(() => {
         const element = document.getElementById(hash);
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
         }
-      }, 500);
-      }
+      }, 100);
     }
+
+    // Clean up scroll flags
+    sessionStorage.removeItem("scrollToTop");
   }, []);
 
   // Hero slides - Best client images
@@ -91,6 +70,10 @@ export default function Home() {
     stateOrCountry: location.stateOrCountry,
     clients: location.clients.slice(0, 1),
   }));
+
+  const orderQuery = useQuery<{ locations: string[], projects: Record<string, string[]> }>({
+    queryKey: [apiUrl("/api/locations/order")],
+  });
 
   const locationDataList = useMemo(() => {
     const locationMap = new Map<string, typeof fallbackLocations[number]>();
@@ -126,14 +109,55 @@ export default function Home() {
       apiClientsByLocation.set(project.locationId, existing);
     });
 
-    return Array.from(locationMap.values()).map((location) => ({
+    // Get order from API or default to fallback order
+    const orderList = orderQuery.data?.locations || [];
+
+    if (orderList.length > 0) {
+      const orderMap = new Map(orderList.map((id, index) => [id, index]));
+      const sorted = Array.from(locationMap.values()).sort((a, b) => {
+        const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
+        const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+        if (indexA === indexB) return 0;
+        return indexA - indexB;
+      });
+
+      return sorted.map((location) => ({
+        ...location,
+        clients: [
+          ...(location.clients || []),
+          ...(apiClientsByLocation.get(location.id) || []),
+        ],
+      }));
+    }
+
+    // Default: use API order (if sorted) then fallback
+    const orderedList: typeof fallbackLocations[number][] = [];
+    const processedIds = new Set<string>();
+
+    // First add locations from API in their order
+    apiLocations.forEach((location) => {
+      const data = locationMap.get(location.id);
+      if (data) {
+        orderedList.push(data);
+        processedIds.add(location.id);
+      }
+    });
+
+    // Then add any fallback locations that weren't in API
+    fallbackLocations.forEach((location) => {
+      if (!processedIds.has(location.id)) {
+        orderedList.push(locationMap.get(location.id)!);
+      }
+    });
+
+    return orderedList.map((location) => ({
       ...location,
       clients: [
         ...(location.clients || []),
         ...(apiClientsByLocation.get(location.id) || []),
       ],
     }));
-  }, [apiLocations, apiProjects]);
+  }, [apiLocations, apiProjects, orderQuery.data]);
 
   const visibleLocations = locationDataList.slice(0, visibleLocationsCount);
   const hasMoreLocations = visibleLocationsCount < locationDataList.length;
@@ -141,10 +165,10 @@ export default function Home() {
 
   // Convert location clients to article format for ArticleGrid component
   const convertToArticles = (locationData: typeof fallbackLocations[number]) => {
-    const categoryText = locationData.stateOrCountry 
+    const categoryText = locationData.stateOrCountry
       ? `${locationData.name} (${locationData.stateOrCountry})`
       : locationData.name;
-    
+
     return locationData.clients.map((client) => ({
       id: client.id,
       image: client.image,
@@ -158,51 +182,51 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
-      
+
       <main>
         <section id="hero" className="m-0 p-0">
           <Hero slides={heroSlides} />
         </section>
-        
-            {visibleLocations.map((locationData, index) => (
-            <ArticleGrid 
-                key={locationData.name}
-                title={locationData.name}
-                stateOrCountry={locationData.stateOrCountry}
-                articles={convertToArticles(locationData)}
-                isFirstSection={index === 0}
-            />
-            ))}
 
-            {(hasMoreLocations || canShowLess) && (
-              <div className="container mx-auto px-3 sm:px-4 flex justify-center mt-8 sm:mt-10 md:mt-12">
-                {hasMoreLocations ? (
-                  <Button
-                    onClick={() =>
-                      setVisibleLocationsCount((count) =>
-                        Math.min(count + 3, locationDataList.length)
-                      )
-                    }
-                    variant="outline"
-                    className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
-                  >
-                    View More Projects
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => setVisibleLocationsCount(4)}
-                    variant="outline"
-                    className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
-                  >
-                    Show Less
-                  </Button>
-                )}
-              </div>
+        {visibleLocations.map((locationData, index) => (
+          <ArticleGrid
+            key={locationData.name}
+            title={locationData.name}
+            stateOrCountry={locationData.stateOrCountry}
+            articles={convertToArticles(locationData)}
+            isFirstSection={index === 0}
+          />
+        ))}
+
+        {(hasMoreLocations || canShowLess) && (
+          <div className="container mx-auto px-3 sm:px-4 flex justify-center mt-8 sm:mt-10 md:mt-12">
+            {hasMoreLocations ? (
+              <Button
+                onClick={() =>
+                  setVisibleLocationsCount((count) =>
+                    Math.min(count + 3, locationDataList.length)
+                  )
+                }
+                variant="outline"
+                className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
+              >
+                View More Projects
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setVisibleLocationsCount(4)}
+                variant="outline"
+                className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
+              >
+                Show Less
+              </Button>
             )}
+          </div>
+        )}
 
         <ProjectsMap />
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -36,20 +36,20 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
-  
+
   // Scroll to top when component mounts or clientId changes
   useEffect(() => {
     // Use setTimeout to ensure DOM is ready
     const scrollToTop = () => {
       window.scrollTo({ top: 0, behavior: "instant" });
     };
-    
+
     // Immediate scroll
     scrollToTop();
-    
+
     // Also scroll after a small delay to handle any layout shifts
     const timeoutId = setTimeout(scrollToTop, 100);
-    
+
     return () => clearTimeout(timeoutId);
   }, [clientId]);
 
@@ -76,9 +76,9 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
       }
     };
   }, []);
-  
+
   // Removed debug logs
-  
+
   if (!hasImages && !isLoading) {
     return (
       <div className="min-h-screen bg-black text-white">
@@ -105,16 +105,15 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
-      
+
       <main className="relative">
-        <section ref={sectionRef} className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
-          <Link 
-            href="/" 
-            className={`inline-flex items-center text-gray-400 hover:text-white transition-all duration-[2000ms] ease-out mb-6 sm:mb-8 ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
+        <section ref={sectionRef} className="container mx-auto px-3 sm:px-4 pt-24 sm:pt-28 md:pt-32 pb-12">
+          <Link
+            href="/"
+            className={`inline-flex items-center text-gray-400 hover:text-white transition-all duration-[2000ms] ease-out mb-6 sm:mb-8 ${isVisible
+                ? 'opacity-100 translate-x-0'
                 : 'opacity-0 -translate-x-12'
-            }`}
+              }`}
             style={{ transitionDelay: '0.1s' }}
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,37 +121,34 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
             </svg>
             Back to Home
           </Link>
-          
-          <h1 className={`text-3xl sm:text-4xl md:text-5xl font-normal font-serif tracking-[0.02em] mb-2 sm:mb-3 text-white transition-all duration-[2000ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
+
+          <h1 className={`text-3xl sm:text-4xl md:text-5xl font-normal font-serif tracking-[0.02em] mb-2 sm:mb-3 text-white transition-all duration-[2000ms] ease-out ${isVisible
+              ? 'opacity-100 translate-x-0'
               : 'opacity-0 -translate-x-12'
-          }`}
-          style={{ transitionDelay: '0.2s' }}>
+            }`}
+            style={{ transitionDelay: '0.2s' }}>
             {clientName}
           </h1>
-          <p className={`text-base sm:text-lg text-gray-400 mb-3 sm:mb-4 transition-all duration-[2000ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-x-0' 
+          <p className={`text-base sm:text-lg text-gray-400 mb-3 sm:mb-4 transition-all duration-[2000ms] ease-out ${isVisible
+              ? 'opacity-100 translate-x-0'
               : 'opacity-0 -translate-x-12'
-          }`}
-          style={{ transitionDelay: '0.3s' }}>
+            }`}
+            style={{ transitionDelay: '0.3s' }}>
             {hasImages ? "Project Portfolio" : "No images yet"}
           </p>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
             {displayedImages.map((image, index) => {
               const imageSrc = image.url || '';
               const imageLabel = image.label || 'Exterior';
-              
+
               return (
-                <div 
-                  key={`image-${index}-${imageSrc.slice(-10)}`} 
-                  className={`relative transition-all duration-[1800ms] ease-out cursor-pointer ${
-                    isVisible 
-                      ? 'opacity-100 translate-y-0 translate-x-0' 
+                <div
+                  key={`image-${index}-${imageSrc.slice(-10)}`}
+                  className={`relative transition-all duration-[1800ms] ease-out cursor-pointer ${isVisible
+                      ? 'opacity-100 translate-y-0 translate-x-0'
                       : 'opacity-0 translate-y-12 translate-x-8'
-                  }`}
+                    }`}
                   style={{ transitionDelay: `${0.4 + index * 0.1}s` }}
                   onClick={() => {
                     if (imageSrc) {
@@ -160,41 +156,41 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
                     }
                   }}
                 >
-                <div 
-                  className="relative group overflow-hidden bg-gray-900"
-                  style={{ 
-                    aspectRatio: '4 / 3',
-                    position: 'relative',
-                    borderRadius: '0.75rem'
-                  }}
-                >
-                  {imageSrc ? (
-                    <img
-                      src={imageSrc}
-                      alt={`${clientName} - Image ${index + 1}`}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      style={{
-                        display: 'block',
-                        position: 'relative',
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '0.75rem'
-                      }}
-                      loading={index < 6 ? "eager" : "lazy"}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = '<div class="flex items-center justify-center w-full h-full text-gray-500 text-xs bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg">Failed to load</div>';
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full text-gray-500 text-xs bg-gray-200 border-2 border-dashed border-gray-300">
-                      No image data
-                    </div>
-                  )}
+                  <div
+                    className="relative group overflow-hidden bg-gray-900"
+                    style={{
+                      aspectRatio: '4 / 3',
+                      position: 'relative',
+                      borderRadius: '0.75rem'
+                    }}
+                  >
+                    {imageSrc ? (
+                      <img
+                        src={imageSrc}
+                        alt={`${clientName} - Image ${index + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        style={{
+                          display: 'block',
+                          position: 'relative',
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '0.75rem'
+                        }}
+                        loading={index < 6 ? "eager" : "lazy"}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = '<div class="flex items-center justify-center w-full h-full text-gray-500 text-xs bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg">Failed to load</div>';
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full text-gray-500 text-xs bg-gray-200 border-2 border-dashed border-gray-300">
+                        No image data
+                      </div>
+                    )}
                   </div>
                   {/* Label at bottom left outside the image */}
                   <div className="mt-2">
@@ -208,12 +204,11 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
           </div>
 
           {hasMoreImages && !showAll && (
-            <div 
-              className={`flex justify-center mt-8 sm:mt-12 transition-all duration-[2000ms] ease-out ${
-                isVisible 
-                  ? 'opacity-100 translate-y-0 translate-x-0' 
+            <div
+              className={`flex justify-center mt-8 sm:mt-12 transition-all duration-[2000ms] ease-out ${isVisible
+                  ? 'opacity-100 translate-y-0 translate-x-0'
                   : 'opacity-0 translate-y-8 translate-x-8'
-              }`}
+                }`}
               style={{ transitionDelay: `${0.4 + displayedImages.length * 0.1 + 0.2}s` }}
             >
               <Button
@@ -249,9 +244,9 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
           </div>
         )}
       </main>
-      
+
       <Footer />
-      
+
       {selectedImage && (
         <ImageLightbox
           isOpen={!!selectedImage}

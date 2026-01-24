@@ -3,12 +3,12 @@ import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { 
-  Award, 
-  Building2, 
-  Lightbulb, 
-  Target, 
-  Users, 
+import {
+  Award,
+  Building2,
+  Lightbulb,
+  Target,
+  Users,
   Palette,
   MapPin,
   Mail,
@@ -21,7 +21,7 @@ export default function About() {
     window.scrollTo(0, 0);
   }, []);
 
-  const whatsappNumber = "917286973788";
+  const whatsappNumber = "918886919444";
   const emailAddress = "info@vajramarchitects.com";
 
   const handleWhatsAppClick = () => {
@@ -37,8 +37,8 @@ export default function About() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
-      
-      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16">
+
+      <main className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16">
         <div className="max-w-6xl mx-auto">
           {/* Back to Home Link */}
           <Link href="/" className="inline-flex items-center text-gray-400 hover:text-white transition-colors mb-8 sm:mb-12">
@@ -80,7 +80,7 @@ export default function About() {
                 {/* Founder Content - Right Side */}
                 <div className="order-1 md:order-2 space-y-6">
                   <div>
-                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-4 text-white">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-4 text-white">
                       Our Founder
                     </h2>
                     <div className="w-20 h-1 bg-white mb-6"></div>
@@ -101,7 +101,7 @@ export default function About() {
             {/* Our Story Section */}
             <section className="border-t border-gray-800 pt-12 sm:pt-16">
               <div className="max-w-4xl mx-auto">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-6 sm:mb-8 text-white text-center">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white text-center">
                   Our Story
                 </h2>
                 <div className="space-y-6">
@@ -120,7 +120,7 @@ export default function About() {
 
             {/* Our Values Section */}
             <section className="border-t border-gray-800 pt-12 sm:pt-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-8 sm:mb-12 text-white text-center">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-8 sm:mb-12 text-white text-center">
                 Our Values
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -128,7 +128,7 @@ export default function About() {
                   <div className="w-12 h-12 bg-black border border-gray-700 rounded-lg flex items-center justify-center mb-4">
                     <Target className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold font-serif mb-3 text-white">Excellence</h3>
+                  <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-3 text-white">Excellence</h3>
                   <p className="text-gray-400 leading-relaxed">
                     We strive for perfection in every detail, ensuring that our work meets the highest standards of quality and craftsmanship.
                   </p>
@@ -138,7 +138,7 @@ export default function About() {
                   <div className="w-12 h-12 bg-black border border-gray-700 rounded-lg flex items-center justify-center mb-4">
                     <Lightbulb className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold font-serif mb-3 text-white">Innovation</h3>
+                  <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-3 text-white">Innovation</h3>
                   <p className="text-gray-400 leading-relaxed">
                     We embrace modern design trends and innovative solutions to create spaces that are both contemporary and timeless.
                   </p>
@@ -148,7 +148,7 @@ export default function About() {
                   <div className="w-12 h-12 bg-black border border-gray-700 rounded-lg flex items-center justify-center mb-4">
                     <Users className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold font-serif mb-3 text-white">Client-Centric</h3>
+                  <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-3 text-white">Client-Centric</h3>
                   <p className="text-gray-400 leading-relaxed">
                     Your vision is our priority. We work closely with you to understand your needs and bring your dreams to life.
                   </p>
@@ -158,7 +158,7 @@ export default function About() {
                   <div className="w-12 h-12 bg-black border border-gray-700 rounded-lg flex items-center justify-center mb-4">
                     <Palette className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold font-serif mb-3 text-white">Bespoke Design</h3>
+                  <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-3 text-white">Bespoke Design</h3>
                   <p className="text-gray-400 leading-relaxed">
                     Every project is unique, tailored to reflect your personal style and lifestyle preferences.
                   </p>
@@ -168,7 +168,7 @@ export default function About() {
                   <div className="w-12 h-12 bg-black border border-gray-700 rounded-lg flex items-center justify-center mb-4">
                     <Award className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold font-serif mb-3 text-white">Quality</h3>
+                  <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-3 text-white">Quality</h3>
                   <p className="text-gray-400 leading-relaxed">
                     We use only the finest materials and work with trusted partners to ensure lasting quality and durability.
                   </p>
@@ -178,7 +178,7 @@ export default function About() {
                   <div className="w-12 h-12 bg-black border border-gray-700 rounded-lg flex items-center justify-center mb-4">
                     <Building2 className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold font-serif mb-3 text-white">Integrity</h3>
+                  <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-3 text-white">Integrity</h3>
                   <p className="text-gray-400 leading-relaxed">
                     We conduct our business with honesty, transparency, and respect, building lasting relationships with our clients.
                   </p>
@@ -188,14 +188,14 @@ export default function About() {
 
             {/* What We Do Section */}
             <section className="border-t border-gray-800 pt-12 sm:pt-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-8 sm:mb-12 text-white text-center">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-8 sm:mb-12 text-white text-center">
                 What We Do
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-2 h-2 bg-white rounded-full mt-2"></div>
                   <div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">Residential Architecture</h3>
+                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Residential Architecture</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Designing custom homes and residential spaces that reflect your lifestyle and preferences, from concept to completion.
                     </p>
@@ -205,7 +205,7 @@ export default function About() {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-2 h-2 bg-white rounded-full mt-2"></div>
                   <div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">Interior Design</h3>
+                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Interior Design</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Creating bespoke interiors that combine functionality with luxury, tailored to your unique taste and requirements.
                     </p>
@@ -215,7 +215,7 @@ export default function About() {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-2 h-2 bg-white rounded-full mt-2"></div>
                   <div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">Commercial Spaces</h3>
+                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Commercial Spaces</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Designing professional environments that enhance productivity and create lasting impressions for your business.
                     </p>
@@ -225,7 +225,7 @@ export default function About() {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-2 h-2 bg-white rounded-full mt-2"></div>
                   <div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">Landscape Design</h3>
+                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Landscape Design</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Transforming outdoor spaces into beautiful, functional landscapes that complement your architectural vision.
                     </p>
@@ -235,7 +235,7 @@ export default function About() {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-2 h-2 bg-white rounded-full mt-2"></div>
                   <div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">3D Visualization</h3>
+                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">3D Visualization</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Providing detailed 3D renders and visualizations to help you visualize your project before construction begins.
                     </p>
@@ -245,7 +245,7 @@ export default function About() {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-2 h-2 bg-white rounded-full mt-2"></div>
                   <div>
-                    <h3 className="text-xl font-bold font-serif mb-2 text-white">Project Management</h3>
+                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Project Management</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Overseeing every aspect of your project from planning to execution, ensuring timely delivery and quality results.
                     </p>
@@ -256,7 +256,7 @@ export default function About() {
 
             {/* Our Reach Section */}
             <section className="border-t border-gray-800 pt-12 sm:pt-16">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-8 sm:mb-12 text-white text-center">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-8 sm:mb-12 text-white text-center">
                 Our Reach
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 max-w-5xl mx-auto">
@@ -268,7 +268,7 @@ export default function About() {
                   { name: "Nirmal", id: "nirmal" },
                   { name: "Ireland", id: "ireland" }
                 ].map((location) => (
-                  <Link 
+                  <Link
                     key={location.id}
                     href={`/#${location.id}`}
                     className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-lg text-center hover:bg-gray-800 hover:border-gray-700 transition-colors cursor-pointer group"
@@ -283,7 +283,7 @@ export default function About() {
             {/* Contact CTA Section */}
             <section className="border-t border-gray-800 pt-12 sm:pt-16">
               <div className="bg-gray-900 border border-gray-800 p-8 sm:p-12 md:p-16 rounded-lg text-center">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-serif mb-4 sm:mb-6 text-white">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white">
                   Let's Build Something Extraordinary Together
                 </h2>
                 <p className="text-gray-400 text-base sm:text-lg mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
@@ -298,7 +298,7 @@ export default function About() {
                     <Mail className="w-5 h-5" />
                     <span className="text-sm font-bold tracking-wide">Send Email</span>
                   </Button>
-                  
+
                   <Button
                     onClick={handleWhatsAppClick}
                     className="rounded-none bg-[#25D366] hover:bg-[#20BA5A] text-white transition-colors flex items-center justify-center gap-2 h-12 px-6 sm:px-8"
@@ -312,7 +312,7 @@ export default function About() {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

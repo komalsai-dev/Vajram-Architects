@@ -21,7 +21,7 @@ export default function Privacy() {
     <div className="min-h-screen bg-black text-white">
       <Navbar />
 
-      <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16">
+      <main className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16">
         <div className="max-w-5xl mx-auto">
           <Link
             href="/"
@@ -230,12 +230,12 @@ export default function Privacy() {
                     </h3>
                   </div>
                   <a
-                    href="https://wa.me/917286973788"
+                    href="https://wa.me/918886919444"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-300 hover:text-white transition-colors"
                   >
-                    +91 72869 73788
+                    +91 88869 19444
                   </a>
                 </div>
               </div>

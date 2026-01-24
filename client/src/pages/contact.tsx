@@ -10,7 +10,7 @@ export default function Contact() {
     window.scrollTo(0, 0);
   }, []);
 
-  const whatsappNumber = "917286973788";
+  const whatsappNumber = "918886919444";
   const emailAddress = "info@vajramarchitects.com";
 
   const handleWhatsAppClick = () => {
@@ -26,7 +26,7 @@ export default function Contact() {
   return (
     <div className="min-h-screen bg-black text-white">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
         <div className="max-w-3xl mx-auto">
           {/* Back to Home Link */}
@@ -43,7 +43,7 @@ export default function Contact() {
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white">
               Contact Us
             </h1>
-            
+
             {/* Simple Description */}
             <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-12 md:mb-16 max-w-2xl mx-auto leading-relaxed">
               Interested in our projects? Get in touch with us easily through WhatsApp or Email.
@@ -77,15 +77,15 @@ export default function Contact() {
                 <div className="bg-gray-900 border border-gray-800 p-6 sm:p-8 rounded-lg">
                   <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7 text-[#25D366]" />
-                    <h3 className="text-lg sm:text-xl font-bold font-serif text-white">WhatsApp</h3>
+                    <h3 className="text-lg sm:text-xl font-normal font-serif tracking-[0.02em] text-white">WhatsApp</h3>
                   </div>
-                  <a 
+                  <a
                     href={`https://wa.me/${whatsappNumber}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-300 hover:text-white transition-colors text-base sm:text-lg block"
                   >
-                    +91 72869 73788
+                    +91 88869 19444
                   </a>
                 </div>
 
@@ -93,9 +93,9 @@ export default function Contact() {
                 <div className="bg-gray-900 border border-gray-800 p-6 sm:p-8 rounded-lg">
                   <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <Mail className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-                    <h3 className="text-lg sm:text-xl font-bold font-serif text-white">Email</h3>
+                    <h3 className="text-lg sm:text-xl font-normal font-serif tracking-[0.02em] text-white">Email</h3>
                   </div>
-                  <a 
+                  <a
                     href={`mailto:${emailAddress}`}
                     className="text-gray-300 hover:text-white transition-colors text-base sm:text-lg break-all"
                   >
@@ -107,7 +107,7 @@ export default function Contact() {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
