@@ -15,6 +15,7 @@ import ClientPortfolio from "@/pages/client-portfolio";
 import Admin from "@/pages/admin";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
+import Launch from "@/pages/launch";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/client/:id">
         {(params) => <ClientPortfolio clientId={params.id} />}
       </Route>
+      <Route path="/launch" component={Launch} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
@@ -52,15 +54,18 @@ function App() {
     }
   };
 
+  // Skip intro LoadingScreen on /launch page (it handles its own loading)
+  const isLaunchPage = location === "/launch";
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        {showLoadingScreen && <LoadingScreen onComplete={handleLoadingComplete} />}
-        {!showLoadingScreen && (
+        {showLoadingScreen && !isLaunchPage && <LoadingScreen onComplete={handleLoadingComplete} />}
+        {(!showLoadingScreen || isLaunchPage) && (
           <>
             <Router />
-            {location !== "/admin" && <WhatsAppButton />}
+            {location !== "/admin" && location !== "/launch" && <WhatsAppButton />}
           </>
         )}
       </TooltipProvider>
