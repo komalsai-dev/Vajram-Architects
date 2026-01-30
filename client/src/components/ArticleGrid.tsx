@@ -32,11 +32,11 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const sectionId = title ? title.toLowerCase().replace(/\s+/g, '-') : '';
-  
+
   // Show only first 3 articles by default, all if showAll is true
   const displayedArticles = showAll ? articles : articles.slice(0, 3);
   const hasMoreArticles = articles.length > 3;
-  
+
   // Format title with state/country in brackets
   const displayTitle = stateOrCountry ? `${title} (${stateOrCountry})` : title;
 
@@ -65,38 +65,54 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
   }, []);
 
   return (
-    <section 
+    <section
       ref={sectionRef}
-      id={sectionId} 
-      className={`container mx-auto px-3 sm:px-4 mb-12 sm:mb-16 md:mb-20 scroll-mt-20 ${
-        isFirstSection ? 'pt-12 sm:pt-16 md:pt-20' : ''
-      }`}
+      id={sectionId}
+      className={`container mx-auto px-3 sm:px-4 mb-12 sm:mb-16 md:mb-20 scroll-mt-20 ${isFirstSection ? 'pt-12 sm:pt-16 md:pt-20' : ''
+        }`}
     >
       {title && (
         <div className="mb-6 sm:mb-8">
-          <h2 
-            className={`text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-2 text-white transition-all duration-[2000ms] ease-out flex items-center gap-2 sm:gap-3 ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
+          <style>{`
+            .location-heading {
+              position: relative;
+              display: inline-block;
+            }
+            .location-heading::after {
+              content: '';
+              position: absolute;
+              bottom: -6px;
+              left: 0;
+              width: 0;
+              height: 3px;
+              background-color: white;
+              transition: width 0.3s ease-out;
+            }
+            .location-heading:hover::after {
+              width: 100px;
+            }
+          `}</style>
+          <h2
+            className={`text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-2 text-white transition-all duration-[2000ms] ease-out flex items-center gap-2 sm:gap-3 ${isVisible
+                ? 'opacity-100 translate-x-0'
                 : 'opacity-0 -translate-x-12'
-            }`}
+              }`}
           >
             <MapPin className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex-shrink-0" />
-            {displayTitle}
+            <span className="location-heading">{displayTitle}</span>
           </h2>
-          <p 
-            className={`text-xs sm:text-sm text-gray-400 transition-all duration-[2000ms] ease-out ${
-              isVisible 
-                ? 'opacity-100 translate-x-0' 
+          <p
+            className={`text-xs sm:text-sm text-gray-400 transition-all duration-[2000ms] ease-out ${isVisible
+                ? 'opacity-100 translate-x-0'
                 : 'opacity-0 -translate-x-12'
-            }`}
+              }`}
             style={{ transitionDelay: '0.1s' }}
           >
             Total Projects - {articles.length}
           </p>
         </div>
       )}
-      
+
       {/* Mobile: Horizontal swipeable carousel */}
       <div className="md:hidden">
         <Carousel
@@ -110,8 +126,8 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
           <CarouselContent className="-ml-2 md:-ml-4">
             {articles.map((article, index) => (
               <CarouselItem key={article.id} className="pl-2 md:pl-4 basis-[85%] sm:basis-[70%]">
-                <ArticleCard 
-                  {...article} 
+                <ArticleCard
+                  {...article}
                   animationDelay={index * 0.1}
                   isVisible={isVisible}
                 />
@@ -127,39 +143,38 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
         columns === 2 ? "sm:grid-cols-2 lg:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"
       )}>
         {displayedArticles.map((article, index) => (
-          <ArticleCard 
-            key={article.id} 
-            {...article} 
+          <ArticleCard
+            key={article.id}
+            {...article}
             animationDelay={index * 0.1}
             isVisible={isVisible}
           />
         ))}
       </div>
-      
+
       {/* View More button - only show on desktop if there are more than 3 articles */}
       {hasMoreArticles && !showAll && (
-        <div 
-          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-[2000ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-y-0 translate-x-0' 
+        <div
+          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-[2000ms] ease-out ${isVisible
+              ? 'opacity-100 translate-y-0 translate-x-0'
               : 'opacity-0 translate-y-8 translate-x-8'
-          }`}
+            }`}
           style={{ transitionDelay: `${displayedArticles.length * 0.1 + 0.2}s` }}
         >
-          <Button 
+          <Button
             onClick={() => setShowAll(true)}
-            variant="outline" 
+            variant="outline"
             className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
           >
             View More
           </Button>
         </div>
       )}
-      
+
       {/* Show Less button when all articles are displayed - only on desktop */}
       {hasMoreArticles && showAll && (
         <div className="hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12">
-          <Button 
+          <Button
             onClick={() => {
               setShowAll(false);
               // Scroll to section title when collapsing
@@ -168,26 +183,25 @@ export function ArticleGrid({ title, stateOrCountry, articles, viewMoreLink, col
                 element.scrollIntoView({ behavior: "smooth", block: "start" });
               }
             }}
-            variant="outline" 
+            variant="outline"
             className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
           >
             Show Less
           </Button>
         </div>
       )}
-      
+
       {/* Legacy viewMoreLink support (if needed) - only on desktop */}
       {viewMoreLink && !hasMoreArticles && (
-        <div 
-          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-[2000ms] ease-out ${
-            isVisible 
-              ? 'opacity-100 translate-y-0 translate-x-0' 
+        <div
+          className={`hidden md:flex justify-center mt-8 sm:mt-10 md:mt-12 transition-all duration-[2000ms] ease-out ${isVisible
+              ? 'opacity-100 translate-y-0 translate-x-0'
               : 'opacity-0 translate-y-8 translate-x-8'
-          }`}
+            }`}
           style={{ transitionDelay: `${displayedArticles.length * 0.1 + 0.2}s` }}
         >
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="rounded-none border-white text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] px-6 sm:px-8 h-9 sm:h-10 hover:bg-white hover:text-black transition-colors uppercase cursor-pointer"
           >
             View More

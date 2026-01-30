@@ -1,11 +1,41 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Mail, MessageCircle, Briefcase, Users, Lightbulb, Award } from "lucide-react";
 
+// Custom hook for scroll animations
+function useScrollAnimation() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      }
+    );
+
+    const elements = ref.current?.querySelectorAll(".scroll-animate");
+    elements?.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
+  return ref;
+}
+
 export default function WorkWithUs() {
+  const containerRef = useScrollAnimation();
+
   // Scroll to top on component mount
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -31,7 +61,60 @@ export default function WorkWithUs() {
     <div className="min-h-screen bg-black text-white">
       <Navbar />
 
-      <main className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16">
+      {/* CSS for animations */}
+      <style>{`
+        .scroll-animate.fade-up {
+          opacity: 0;
+          transform: translateY(40px);
+          transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+        }
+        .scroll-animate.fade-up.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .scroll-animate.fade-left {
+          opacity: 0;
+          transform: translateX(-50px);
+          transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+        }
+        .scroll-animate.fade-left.is-visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .scroll-animate.fade-right {
+          opacity: 0;
+          transform: translateX(50px);
+          transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+        }
+        .scroll-animate.fade-right.is-visible {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        .scroll-animate.delay-1 { transition-delay: 0.1s; }
+        .scroll-animate.delay-2 { transition-delay: 0.2s; }
+        .scroll-animate.delay-3 { transition-delay: 0.3s; }
+        .scroll-animate.delay-4 { transition-delay: 0.4s; }
+        .section-heading {
+          position: relative;
+          display: block;
+          width: fit-content;
+        }
+        .section-heading::after {
+          content: '';
+          position: absolute;
+          bottom: -8px;
+          left: 0;
+          width: 0;
+          height: 3px;
+          background-color: white;
+          transition: width 0.3s ease-out;
+        }
+        .section-heading:hover::after {
+          width: 80px;
+        }
+      `}</style>
+
+      <main ref={containerRef} className="container mx-auto px-4 sm:px-6 pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16">
         <div className="max-w-4xl mx-auto">
           {/* Back to Home Link */}
           <Link href="/" className="inline-flex items-center text-gray-400 hover:text-white transition-colors mb-8 sm:mb-12">
@@ -42,11 +125,11 @@ export default function WorkWithUs() {
           </Link>
 
           {/* Hero Section */}
-          <div className="text-center mb-12 sm:mb-16 md:mb-20">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white">
+          <div className="text-center mb-12 sm:mb-16 md:mb-20 scroll-animate fade-up">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white">
               Work With Us
             </h1>
-            <p className="text-lg sm:text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
               Join our team of passionate architects and designers. We're looking for talented students and interns who want to grow with us.
             </p>
           </div>
@@ -54,53 +137,53 @@ export default function WorkWithUs() {
           {/* Main Content */}
           <div className="space-y-12 sm:space-y-16 md:space-y-20">
             {/* Why Join Us Section */}
-            <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white border-b border-gray-800 pb-4">
+            <section className="scroll-animate fade-up">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white border-b border-gray-800 pb-4 section-heading">
                 Why Join VAJRAM ARCHITECTS?
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 scroll-animate fade-left delay-1">
                   <div className="flex-shrink-0 w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center">
                     <Briefcase className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Real-World Experience</h3>
+                    <h3 className="text-lg font-normal font-serif tracking-[0.02em] mb-2 text-white">Real-World Experience</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Work on actual projects and gain hands-on experience in modern architecture and interior design.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 scroll-animate fade-right delay-1">
                   <div className="flex-shrink-0 w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center">
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Mentorship</h3>
+                    <h3 className="text-lg font-normal font-serif tracking-[0.02em] mb-2 text-white">Mentorship</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Learn from experienced professionals who are passionate about nurturing the next generation of architects.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 scroll-animate fade-left delay-2">
                   <div className="flex-shrink-0 w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center">
                     <Lightbulb className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Creative Freedom</h3>
+                    <h3 className="text-lg font-normal font-serif tracking-[0.02em] mb-2 text-white">Creative Freedom</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Bring your innovative ideas to life and contribute to projects that define luxury living spaces.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-4 scroll-animate fade-right delay-2">
                   <div className="flex-shrink-0 w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center">
                     <Award className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] mb-2 text-white">Portfolio Building</h3>
+                    <h3 className="text-lg font-normal font-serif tracking-[0.02em] mb-2 text-white">Portfolio Building</h3>
                     <p className="text-gray-400 leading-relaxed">
                       Build an impressive portfolio with diverse projects across multiple locations and design styles.
                     </p>
@@ -110,30 +193,30 @@ export default function WorkWithUs() {
             </section>
 
             {/* What We're Looking For */}
-            <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white border-b border-gray-800 pb-4">
+            <section className="scroll-animate fade-up">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white border-b border-gray-800 pb-4 section-heading">
                 What We're Looking For
               </h2>
               <div className="space-y-4">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 scroll-animate fade-left delay-1">
                   <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0" />
                   <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
                     <strong className="text-white">Architecture Students</strong> - Currently pursuing or recently graduated in Architecture, Interior Design, or related fields.
                   </p>
                 </div>
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 scroll-animate fade-left delay-2">
                   <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0" />
                   <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
                     <strong className="text-white">Passion for Design</strong> - A genuine interest in modern architecture, bespoke interiors, and luxury living spaces.
                   </p>
                 </div>
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 scroll-animate fade-left delay-3">
                   <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0" />
                   <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
                     <strong className="text-white">Willingness to Learn</strong> - Eager to learn, adapt, and grow in a professional environment.
                   </p>
                 </div>
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 scroll-animate fade-left delay-4">
                   <div className="w-2 h-2 bg-white rounded-full mt-2 flex-shrink-0" />
                   <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
                     <strong className="text-white">Portfolio Ready</strong> - Have work samples, projects, or designs to showcase your skills and creativity.
@@ -143,17 +226,17 @@ export default function WorkWithUs() {
             </section>
 
             {/* How to Apply */}
-            <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white border-b border-gray-800 pb-4">
+            <section className="scroll-animate fade-up">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white border-b border-gray-800 pb-4 section-heading">
                 How to Apply
               </h2>
-              <div className="bg-gray-900 border border-gray-800 p-6 sm:p-8 md:p-10 rounded-lg space-y-6">
+              <div className="bg-gray-900/50 border border-gray-800 p-6 sm:p-8 md:p-10 rounded-lg space-y-6">
                 <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
                   Interested in joining our team? We'd love to see your work! Here's how you can get in touch:
                 </p>
 
                 <div className="space-y-4">
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-4 scroll-animate fade-right delay-1">
                     <div className="flex-shrink-0 w-10 h-10 bg-black border border-gray-700 rounded-lg flex items-center justify-center">
                       <span className="text-white font-bold">1</span>
                     </div>
@@ -165,7 +248,7 @@ export default function WorkWithUs() {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-4 scroll-animate fade-right delay-2">
                     <div className="flex-shrink-0 w-10 h-10 bg-black border border-gray-700 rounded-lg flex items-center justify-center">
                       <span className="text-white font-bold">2</span>
                     </div>
@@ -197,7 +280,7 @@ export default function WorkWithUs() {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-4 scroll-animate fade-right delay-3">
                     <div className="flex-shrink-0 w-10 h-10 bg-black border border-gray-700 rounded-lg flex items-center justify-center">
                       <span className="text-white font-bold">3</span>
                     </div>
@@ -213,15 +296,15 @@ export default function WorkWithUs() {
             </section>
 
             {/* Contact Information */}
-            <section className="border-t border-gray-800 pt-8 sm:pt-12">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white">
+            <section className="border-t border-gray-800 pt-8 sm:pt-12 scroll-animate fade-up">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-normal font-serif tracking-[0.02em] mb-6 sm:mb-8 text-white section-heading">
                 Get in Touch
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                <div className="bg-gray-900 border border-gray-800 p-6 sm:p-8 rounded-lg">
+                <div className="bg-gray-900/50 border border-gray-800 hover:border-white/50 p-6 sm:p-8 rounded-lg transition-all duration-300 scroll-animate fade-left delay-1">
                   <div className="flex items-center gap-4 mb-4">
                     <Mail className="w-6 h-6 text-white" />
-                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] text-white">Email</h3>
+                    <h3 className="text-lg font-normal font-serif tracking-[0.02em] text-white">Email</h3>
                   </div>
                   <a
                     href={`mailto:${emailAddress}`}
@@ -231,10 +314,10 @@ export default function WorkWithUs() {
                   </a>
                 </div>
 
-                <div className="bg-gray-900 border border-gray-800 p-6 sm:p-8 rounded-lg">
+                <div className="bg-gray-900/50 border border-gray-800 hover:border-white/50 p-6 sm:p-8 rounded-lg transition-all duration-300 scroll-animate fade-right delay-1">
                   <div className="flex items-center gap-4 mb-4">
                     <MessageCircle className="w-6 h-6 text-white" />
-                    <h3 className="text-xl font-normal font-serif tracking-[0.02em] text-white">WhatsApp</h3>
+                    <h3 className="text-lg font-normal font-serif tracking-[0.02em] text-white">WhatsApp</h3>
                   </div>
                   <a
                     href={`https://wa.me/${whatsappNumber}`}

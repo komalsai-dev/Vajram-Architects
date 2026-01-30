@@ -111,8 +111,8 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
           <Link
             href="/"
             className={`inline-flex items-center text-gray-400 hover:text-white transition-all duration-[2000ms] ease-out mb-6 sm:mb-8 ${isVisible
-                ? 'opacity-100 translate-x-0'
-                : 'opacity-0 -translate-x-12'
+              ? 'opacity-100 translate-x-0'
+              : 'opacity-0 -translate-x-12'
               }`}
             style={{ transitionDelay: '0.1s' }}
           >
@@ -122,16 +122,35 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
             Back to Home
           </Link>
 
+          <style>{`
+            .client-heading {
+              position: relative;
+              display: inline-block;
+            }
+            .client-heading::after {
+              content: '';
+              position: absolute;
+              bottom: -6px;
+              left: 0;
+              width: 0;
+              height: 3px;
+              background-color: white;
+              transition: width 0.3s ease-out;
+            }
+            .client-heading:hover::after {
+              width: 100px;
+            }
+          `}</style>
           <h1 className={`text-3xl sm:text-4xl md:text-5xl font-normal font-serif tracking-[0.02em] mb-2 sm:mb-3 text-white transition-all duration-[2000ms] ease-out ${isVisible
-              ? 'opacity-100 translate-x-0'
-              : 'opacity-0 -translate-x-12'
+            ? 'opacity-100 translate-x-0'
+            : 'opacity-0 -translate-x-12'
             }`}
             style={{ transitionDelay: '0.2s' }}>
-            {clientName}
+            <span className="client-heading">{clientName}</span>
           </h1>
           <p className={`text-base sm:text-lg text-gray-400 mb-3 sm:mb-4 transition-all duration-[2000ms] ease-out ${isVisible
-              ? 'opacity-100 translate-x-0'
-              : 'opacity-0 -translate-x-12'
+            ? 'opacity-100 translate-x-0'
+            : 'opacity-0 -translate-x-12'
             }`}
             style={{ transitionDelay: '0.3s' }}>
             {hasImages ? "Project Portfolio" : "No images yet"}
@@ -146,8 +165,8 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
                 <div
                   key={`image-${index}-${imageSrc.slice(-10)}`}
                   className={`relative transition-all duration-[1800ms] ease-out cursor-pointer ${isVisible
-                      ? 'opacity-100 translate-y-0 translate-x-0'
-                      : 'opacity-0 translate-y-12 translate-x-8'
+                    ? 'opacity-100 translate-y-0 translate-x-0'
+                    : 'opacity-0 translate-y-12 translate-x-8'
                     }`}
                   style={{ transitionDelay: `${0.4 + index * 0.1}s` }}
                   onClick={() => {
@@ -206,8 +225,8 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
           {hasMoreImages && !showAll && (
             <div
               className={`flex justify-center mt-8 sm:mt-12 transition-all duration-[2000ms] ease-out ${isVisible
-                  ? 'opacity-100 translate-y-0 translate-x-0'
-                  : 'opacity-0 translate-y-8 translate-x-8'
+                ? 'opacity-100 translate-y-0 translate-x-0'
+                : 'opacity-0 translate-y-8 translate-x-8'
                 }`}
               style={{ transitionDelay: `${0.4 + displayedImages.length * 0.1 + 0.2}s` }}
             >
