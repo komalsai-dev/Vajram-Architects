@@ -73,7 +73,7 @@ export function Footer() {
   return (
     <footer
       ref={footerRef}
-      className="bg-[#fcfbf9] text-[#1c1c1c] py-10 sm:py-14 border-t border-gray-200 rounded-t-[3rem]"
+      className="bg-[#e5e5e5] text-[#1c1c1c] py-10 sm:py-14 border-t border-gray-200 rounded-t-[3rem]"
     >
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center justify-center space-y-6">

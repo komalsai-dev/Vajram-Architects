@@ -57,12 +57,12 @@ export const addProjectImages = async (req, res, next) => {
         tags: ["vajram_project", projectTag, locationTag],
         context: {
           projectId: req.params.projectId,
-          projectName,
-          locationId,
-          locationName,
-          stateOrCountry,
-          latitude,
-          longitude,
+          projectName: projectName || "",
+          locationId: locationId || "",
+          locationName: locationName || "",
+          stateOrCountry: stateOrCountry || "",
+          latitude: latitude || "",
+          longitude: longitude || "",
           label: normalizeLabel(labels[index]),
         },
       });

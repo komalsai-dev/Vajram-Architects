@@ -1,13 +1,27 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageLightboxProps {
   isOpen: boolean;
   onClose: () => void;
   imageSrc: string;
   imageAlt?: string;
+  onNext?: () => void;
+  onPrev?: () => void;
+  hasNext?: boolean;
+  hasPrev?: boolean;
 }
 
-export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }: ImageLightboxProps) {
+export function ImageLightbox({
+  isOpen,
+  onClose,
+  imageSrc,
+  imageAlt = "Image",
+  onNext,
+  onPrev,
+  hasNext = false,
+  hasPrev = false
+}: ImageLightboxProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -27,7 +41,15 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       setLastTouchCenter(null);
       setIsDragging(false);
     }
-  }, [isOpen, imageSrc]);
+  }, [isOpen]);
+
+  // Reset zoom when image source changes while open
+  useEffect(() => {
+    if (isOpen) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [imageSrc]);
 
   // Reset position when scale returns to 1
   useEffect(() => {
@@ -36,24 +58,30 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
     }
   }, [scale]);
 
-  // Handle ESC key to close
+  // Handle keyboard navigation
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      if (e.key === "Escape") {
         onClose();
+      } else if (e.key === "ArrowRight" && hasNext && onNext) {
+        onNext();
+      } else if (e.key === "ArrowLeft" && hasPrev && onPrev) {
+        onPrev();
       }
     };
 
     if (isOpen) {
-      document.addEventListener("keydown", handleEsc);
+      document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
     }
 
     return () => {
-      document.removeEventListener("keydown", handleEsc);
+      document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, onNext, onPrev, hasNext, hasPrev]);
 
   // Calculate distance between two touches for pinch zoom
   const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -73,23 +101,23 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
   // Constrain position to keep image within bounds
   const constrainPosition = useCallback((x: number, y: number, currentScale: number) => {
     if (!imageRef.current || !containerRef.current) return { x: 0, y: 0 };
-    
+
     const img = imageRef.current;
     const container = containerRef.current;
     const imgRect = img.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
-    
+
     // Get natural image dimensions
     const naturalWidth = img.naturalWidth;
     const naturalHeight = img.naturalHeight;
-    
+
     // Calculate displayed dimensions (accounting for object-contain)
     const containerAspect = containerRect.width / containerRect.height;
     const imageAspect = naturalWidth / naturalHeight;
-    
+
     let displayedWidth: number;
     let displayedHeight: number;
-    
+
     if (imageAspect > containerAspect) {
       displayedWidth = Math.min(containerRect.width * 0.9, naturalWidth);
       displayedHeight = displayedWidth / imageAspect;
@@ -97,15 +125,15 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       displayedHeight = Math.min(containerRect.height * 0.9, naturalHeight);
       displayedWidth = displayedHeight * imageAspect;
     }
-    
+
     // Scaled dimensions
     const scaledWidth = displayedWidth * currentScale;
     const scaledHeight = displayedHeight * currentScale;
-    
+
     // Calculate bounds
     const maxX = Math.max(0, (scaledWidth - containerRect.width) / 2);
     const maxY = Math.max(0, (scaledHeight - containerRect.height) / 2);
-    
+
     return {
       x: Math.max(-maxX, Math.min(maxX, x)),
       y: Math.max(-maxY, Math.min(maxY, y)),
@@ -115,27 +143,27 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
   // Handle mouse wheel zoom (desktop) - zoom towards mouse position
   const handleWheel = useCallback((e: WheelEvent) => {
     if (!isOpen || !imageRef.current || !containerRef.current) return;
-    
+
     e.preventDefault();
     const delta = e.deltaY * -0.01;
     const newScale = Math.min(Math.max(1, scale + delta), 3);
-    
+
     if (newScale !== scale && imageRef.current) {
       const img = imageRef.current;
       const container = containerRef.current;
       const rect = container.getBoundingClientRect();
-      
+
       // Calculate mouse position relative to container center
       const mouseX = e.clientX - rect.left - rect.width / 2;
       const mouseY = e.clientY - rect.top - rect.height / 2;
-      
+
       // Calculate new position to zoom towards mouse
       const scaleChange = newScale / scale;
       const newX = mouseX - (mouseX - position.x) * scaleChange;
       const newY = mouseY - (mouseY - position.y) * scaleChange;
-      
+
       const constrained = constrainPosition(newX, newY, newScale);
-      
+
       setPosition(constrained);
       setScale(newScale);
     }
@@ -157,7 +185,7 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       const deltaY = e.clientY - dragStart.y;
       const newX = initialPosition.x + deltaX;
       const newY = initialPosition.y + deltaY;
-      
+
       const constrained = constrainPosition(newX, newY, scale);
       setPosition(constrained);
     }
@@ -174,16 +202,16 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       e.preventDefault();
       const distance = getTouchDistance(e.touches[0], e.touches[1]);
       const center = getTouchCenter(e.touches[0], e.touches[1]);
-      
+
       if (containerRef.current) {
         const container = containerRef.current;
         const rect = container.getBoundingClientRect();
         const centerX = center.x - rect.left - rect.width / 2;
         const centerY = center.y - rect.top - rect.height / 2;
-        
+
         setLastTouchCenter({ x: centerX, y: centerY });
       }
-      
+
       setLastTouchDistance(distance);
       setIsDragging(false);
     } else if (e.touches.length === 1 && scale > 1) {
@@ -202,17 +230,17 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       const distance = getTouchDistance(e.touches[0], e.touches[1]);
       const scaleChange = distance / lastTouchDistance;
       let newScale = scale * scaleChange;
-      
+
       // Limit zoom between 1x and 3x
       newScale = Math.min(Math.max(1, newScale), 3);
-      
+
       // Calculate new position to zoom towards pinch center
       const scaleRatio = newScale / scale;
       const newX = lastTouchCenter.x - (lastTouchCenter.x - position.x) * scaleRatio;
       const newY = lastTouchCenter.y - (lastTouchCenter.y - position.y) * scaleRatio;
-      
+
       const constrained = constrainPosition(newX, newY, newScale);
-      
+
       setPosition(constrained);
       setScale(newScale);
       setLastTouchDistance(distance);
@@ -223,7 +251,7 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
       const deltaY = e.touches[0].clientY - dragStart.y;
       const newX = initialPosition.x + deltaX;
       const newY = initialPosition.y + deltaY;
-      
+
       const constrained = constrainPosition(newX, newY, scale);
       setPosition(constrained);
     }
@@ -262,7 +290,7 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const backdrop = e.currentTarget;
-    
+
     // Close if clicking on backdrop (not on image) and not dragging
     if (target === backdrop && !isDragging) {
       onClose();
@@ -274,14 +302,41 @@ export function ImageLightbox({ isOpen, onClose, imageSrc, imageAlt = "Image" }:
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 touch-none"
       onClick={handleBackdropClick}
     >
+      {/* Navigation Buttons */}
+      {hasPrev && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrev?.();
+          }}
+          className="absolute left-2 sm:left-4 z-[60] p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10" />
+        </button>
+      )}
+
+      {hasNext && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNext?.();
+          }}
+          className="absolute right-2 sm:right-4 z-[60] p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300"
+          aria-label="Next image"
+        >
+          <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10" />
+        </button>
+      )}
+
       <img
         ref={imageRef}
         src={imageSrc}
         alt={imageAlt}
-        className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl select-none touch-none"
+        className="max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] w-auto h-auto object-contain rounded-lg shadow-2xl select-none"
         style={{
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
           transformOrigin: "center center",

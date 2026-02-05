@@ -34,7 +34,7 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
   const isLoading = projectQuery.isLoading || projectQuery.isFetching;
   const [showAll, setShowAll] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(-1);
   const sectionRef = useRef<HTMLElement>(null);
 
   // Scroll to top when component mounts or clientId changes
@@ -170,8 +170,10 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
                     }`}
                   style={{ transitionDelay: `${0.4 + index * 0.1}s` }}
                   onClick={() => {
-                    if (imageSrc) {
-                      setSelectedImage(imageSrc);
+                    // Find the true index in the full images array
+                    const trueIndex = images.findIndex((img: any) => img.url === image.url);
+                    if (trueIndex !== -1) {
+                      setSelectedImageIndex(trueIndex);
                     }
                   }}
                 >
@@ -266,15 +268,26 @@ export default function ClientPortfolio({ clientId }: ClientPortfolioProps) {
 
       <Footer />
 
-      {selectedImage && (
+      {selectedImageIndex >= 0 && images[selectedImageIndex] && (
         <ImageLightbox
-          isOpen={!!selectedImage}
-          onClose={() => setSelectedImage(null)}
-          imageSrc={selectedImage}
+          isOpen={selectedImageIndex >= 0}
+          onClose={() => setSelectedImageIndex(-1)}
+          imageSrc={images[selectedImageIndex]?.url || ''}
           imageAlt={`${clientName} - Portfolio Image`}
+          onNext={() => {
+            if (selectedImageIndex < images.length - 1) {
+              setSelectedImageIndex(selectedImageIndex + 1);
+            }
+          }}
+          onPrev={() => {
+            if (selectedImageIndex > 0) {
+              setSelectedImageIndex(selectedImageIndex - 1);
+            }
+          }}
+          hasNext={selectedImageIndex < images.length - 1}
+          hasPrev={selectedImageIndex > 0}
         />
       )}
     </div>
   );
 }
-
