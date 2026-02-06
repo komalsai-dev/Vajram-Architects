@@ -159,36 +159,48 @@ export default function About() {
           {/* Main Content */}
           <div className="space-y-12 sm:space-y-16 md:space-y-20">
             {/* Founder Section */}
-            <section className="border-t border-gray-800 pt-12 sm:pt-16">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
-                {/* Founder Image - Left Side */}
-                <div className="flex justify-center lg:justify-start lg:mt-24 scroll-animate fade-left">
-                  <div className="relative w-80 h-80 sm:w-96 sm:h-[24rem] bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
+            <section className="border-t border-gray-800 pt-16 sm:pt-24">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
+                {/* Founder Image & Info - Left Side */}
+                <div className="lg:col-span-5 flex flex-col scroll-animate fade-left">
+                  <div className="relative w-full h-[22rem] sm:h-[26rem] lg:h-[28rem] lg:mt-24 bg-gray-900/50 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl transition-transform duration-500 hover:scale-[1.01]">
                     <img
                       src="/vajram-founder.jpeg"
-                      alt="Founder of Vajram Architects"
-                      className="w-full h-full object-cover"
+                      alt="Vajrala Baji - Founder of Vajram Architects"
+                      className="w-full h-full object-cover object-bottom"
                     />
+                  </div>
+                  <div className="mt-8 text-center lg:text-left">
+                    <h3 className="text-3xl font-serif text-white tracking-wide mb-2">Vajrala Baji Reddy</h3>
+                    <div className="w-12 h-0.5 bg-gray-700 mx-auto lg:mx-0 mb-3"></div>
+                    <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">
+                      Founder - Vajram Architects
+                    </p>
                   </div>
                 </div>
 
                 {/* Founder Content - Right Side */}
-                <div className="space-y-6 scroll-animate fade-right">
+                <div className="lg:col-span-7 space-y-8 scroll-animate fade-right lg:pt-4">
                   <div>
-                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-normal font-serif tracking-[0.02em] text-white">
-                      Our Founder
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-normal font-serif tracking-[0.02em] text-white overflow-hidden">
+                      <span className="block section-heading pb-2">Our Founder</span>
                     </h2>
-                    <div className="w-20 h-1 bg-white mt-4"></div>
                   </div>
-                  <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-                    At the heart of VAJRAM ARCHITECTS is a vision to transform living spaces into extraordinary experiences. Our founder brings years of expertise in modern architecture and interior design, combining innovative thinking with meticulous attention to detail.
-                  </p>
-                  <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-                    With a passion for creating bespoke interiors and premium living spaces, we've built a reputation for excellence across multiple locations, from Guntur and Hyderabad to international projects in Ireland.
-                  </p>
-                  <p className="text-gray-300 text-base sm:text-lg leading-relaxed">
-                    Every project we undertake reflects our commitment to designing spaces that not only meet but exceed our clients' expectations, blending functionality with luxury and timeless elegance.
-                  </p>
+
+                  <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
+                    <p>
+                      At the heart of VAJRAM ARCHITECTS is a vision to transform living spaces into extraordinary experiences. Our founder brings years of expertise in modern architecture and interior design, combining innovative thinking with meticulous attention to detail.
+                    </p>
+                    <p>
+                      With a passion for creating bespoke interiors and premium living spaces, we've built a reputation for excellence across multiple locations, from Guntur and Hyderabad to international projects in Ireland.
+                    </p>
+                    <p>
+                      Every project we undertake reflects our commitment to designing spaces that not only meet but exceed our clients' expectations, blending functionality with luxury and timeless elegance.
+                    </p>
+                    <p>
+                      We believe in building lasting relationships with our clients, grounded in trust, transparency, and a shared commitment to excellence.
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
@@ -366,7 +378,7 @@ export default function About() {
                   <Link
                     key={location.id}
                     href={`/#${location.id}`}
-                    className={`bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-lg text-center hover:bg-gray-800 hover:border-gray-700 transition-colors cursor-pointer group scroll-animate fade-up ${location.delay}`}
+                    className={`bg-gray-900/50 border border-gray-800 p-4 sm:p-6 rounded-lg text-center hover:border-white/50 transition-colors cursor-pointer group scroll-animate fade-up ${location.delay}`}
                   >
                     <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-white mx-auto mb-2 sm:mb-3 transition-transform group-hover:scale-110" />
                     <p className="text-white font-medium text-sm sm:text-base group-hover:text-gray-200 transition-colors">{location.name}</p>
@@ -377,7 +389,7 @@ export default function About() {
 
             {/* Contact CTA Section */}
             <section className="border-t border-gray-800 pt-12 sm:pt-16 scroll-animate fade-up">
-              <div className="bg-gray-900 border border-gray-800 p-8 sm:p-12 md:p-16 rounded-lg text-center">
+              <div className="bg-gray-900/50 border border-gray-800 p-8 sm:p-12 md:p-16 rounded-lg text-center">
                 <h2 className="text-xl sm:text-2xl md:text-3xl font-normal font-serif tracking-[0.02em] mb-4 sm:mb-6 text-white section-heading">
                   Let's Build Something Extraordinary Together
                 </h2>

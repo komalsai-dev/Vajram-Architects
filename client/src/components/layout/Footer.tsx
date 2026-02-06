@@ -115,14 +115,14 @@ export function Footer() {
             <a href="https://facebook.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
               <Facebook className="w-5 h-5" />
             </a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
+            <a href="https://www.instagram.com/vajram_architects?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noreferrer" className="hover:text-black transition-colors hover:scale-125 transform duration-300">
               <Instagram className="w-5 h-5" />
             </a>
           </div>
 
           <div className={`text-center pt-2 border-t border-gray-100 w-full max-w-xs sm:max-w-md md:max-w-2xl transition-all duration-700 ease-out delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <p className="text-xs text-gray-400 font-sans tracking-widest uppercase mb-2">
-              © 2025 Vajram Architects
+              © 2026 Vajram Architects
             </p>
             <p className="text-[11px] text-gray-500 font-sans tracking-wide font-medium">
               Developed By <a href="https://scalvion.com/" target="_blank" rel="noopener noreferrer" className="hover:text-gray-800 transition-colors duration-300 cursor-pointer">Scalvion Digital Solutions</a>
