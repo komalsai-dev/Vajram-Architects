@@ -1,5 +1,4 @@
 import { useRef, useEffect } from "react";
-import heroVideo from "@assets/images/hero/video.mp4";
 
 interface LoadingScreenProps {
   onComplete: () => void;
@@ -48,7 +47,10 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
           backfaceVisibility: "hidden",
         }}
       >
-        <source src={heroVideo} type="video/mp4" />
+        <source
+          src="https://res.cloudinary.com/da9ppibpk/video/upload/f_auto,q_auto/v1771697191/video_r9naez.mp4"
+          type="video/mp4"
+        />
       </video>
     </div>
   );
