@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   addProjectImages,
   deleteProjectImage,
+  deleteAllProjectImages,
   updateProjectImage,
 } from "../controllers/imagesController.js";
 import { upload } from "../middleware/upload.js";
@@ -17,5 +18,6 @@ router.post(
 );
 router.patch("/:projectId/images/:imageId", requireAdmin, updateProjectImage);
 router.delete("/:projectId/images/:imageId", requireAdmin, deleteProjectImage);
+router.delete("/:projectId/images", requireAdmin, deleteAllProjectImages);
 
 export default router;

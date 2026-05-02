@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { uploadBuffer, deleteImage } from "../services/cloudinaryService.js";
 import { slugify } from "../utils/slugify.js";
 import { v2 as cloudinary } from "cloudinary";
+import { config } from "../config/env.js";
 
 const normalizeLabel = (label) => {
   const normalized = String(label || "").toLowerCase();
@@ -113,6 +114,29 @@ export const deleteProjectImage = async (req, res, next) => {
   try {
     if (req.query.deleteCloudinary === "true") {
       await deleteImage(req.params.imageId);
+    }
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteAllProjectImages = async (req, res, next) => {
+  try {
+    if (req.query.deleteCloudinary === "true") {
+      const [locationId, projectSlug] = req.params.projectId.split("__");
+      const prefixes = [
+        `${locationId}/${projectSlug}`,
+        config.cloudinary.folder
+          ? `${config.cloudinary.folder}/${locationId}/${projectSlug}`
+          : null,
+      ].filter(Boolean);
+      for (const prefix of prefixes) {
+        await cloudinary.api.delete_resources_by_prefix(prefix, {
+          resource_type: "image",
+          type: "upload",
+        });
+      }
     }
     res.status(204).send();
   } catch (error) {

@@ -12,7 +12,7 @@ cloudinary.config({
 const CONFIG_PUBLIC_ID = "vajram_config/display_order";
 
 // Default order structure
-const DEFAULT_ORDER = { locations: [], projects: {} };
+const DEFAULT_ORDER = { locations: [], projects: {}, images: {} };
 
 // 1x1 transparent PNG as Base64
 const PLACEHOLDER_IMAGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -84,3 +84,17 @@ export const saveProjectOrder = async (locationId, projectIds) => {
     await saveOrderToCloudinary(current);
     return current.projects[locationId];
 };
+
+/**
+ * Save the image order for a specific project.
+ */
+export const saveImageOrder = async (projectId, imageIds) => {
+    const current = await getDisplayOrder();
+    if (!current.images) {
+        current.images = {};
+    }
+    current.images[projectId] = imageIds;
+    await saveOrderToCloudinary(current);
+    return current.images[projectId];
+};
+

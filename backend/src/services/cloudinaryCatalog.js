@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config/env.js";
+import { getDisplayOrder } from "./orderService.js";
 import { slugify } from "../utils/slugify.js";
 
 const EXCLUDED_FOLDERS = [
@@ -133,8 +134,28 @@ export const buildCatalogFromCloudinary = async () => {
     projectMap.set(projectId, existing);
   });
 
+  const order = await getDisplayOrder();
+  const projects = Array.from(projectMap.values());
+  for (const project of projects) {
+    if (order.images && order.images[project.id]) {
+      const orderConfig = order.images[project.id];
+      project.images.sort((a, b) => {
+        const indexA = orderConfig.indexOf(a.id);
+        const indexB = orderConfig.indexOf(b.id);
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return 0; // fallback to original order
+      });
+    }
+    
+    if (project.images.length > 0) {
+      project.coverImageUrl = project.images[0].url;
+    }
+  }
+
   return {
     locations: Array.from(locationMap.values()),
-    projects: Array.from(projectMap.values()),
+    projects,
   };
 };

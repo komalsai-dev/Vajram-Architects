@@ -1,4 +1,4 @@
-import { getDisplayOrder, saveLocationOrder, saveProjectOrder } from '../services/orderService.js';
+import { getDisplayOrder, saveLocationOrder, saveProjectOrder, saveImageOrder } from '../services/orderService.js';
 
 export const getOrder = async (req, res, next) => {
     try {
@@ -31,6 +31,19 @@ export const updateProjectOrder = async (req, res, next) => {
         }
         const updated = await saveProjectOrder(locationId, projects);
         res.json({ projects: updated });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateImageOrder = async (req, res, next) => {
+    try {
+        const { projectId, images } = req.body;
+        if (!projectId || !Array.isArray(images)) {
+            return res.status(400).json({ message: "Invalid request" });
+        }
+        const updated = await saveImageOrder(projectId, images);
+        res.json({ images: updated });
     } catch (error) {
         next(error);
     }

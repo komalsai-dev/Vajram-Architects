@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Country, State, City } from "country-state-city";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, ArrowUp, ArrowDown } from "lucide-react";
+import { Eye, EyeOff, ArrowUp, ArrowDown, ArrowLeft, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -228,6 +228,11 @@ export default function Admin() {
   const [orderedLocationIds, setOrderedLocationIds] = useState<string[]>([]);
   const [hasOrderChanges, setHasOrderChanges] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  const [orderedImageIds, setOrderedImageIds] = useState<string[]>([]);
+  const [hasImageOrderChanges, setHasImageOrderChanges] = useState(false);
+  const [isSavingImageOrder, setIsSavingImageOrder] = useState(false);
+
 
   const activeProject = useMemo(
     () => projects.find((project) => project.id === activeProjectId),
@@ -485,6 +490,15 @@ export default function Admin() {
     );
   }, [activeProject, countries, locations]);
 
+  useEffect(() => {
+    if (activeProject?.images && !hasImageOrderChanges && !isSavingImageOrder) {
+      setOrderedImageIds(activeProject.images.map((img: ProjectImage) => img.id));
+    } else if (!activeProject) {
+      setOrderedImageIds([]);
+      setHasImageOrderChanges(false);
+    }
+  }, [activeProject, hasImageOrderChanges, isSavingImageOrder]);
+
   // Sync local order state with Cloudinary order data
   useEffect(() => {
     // Don't update while saving or if user has unsaved changes
@@ -667,6 +681,47 @@ export default function Admin() {
     },
   });
 
+  const updateImageOrderMutation = useMutation({
+    mutationFn: async (imageIds: string[]) => {
+      if (!activeProject) return;
+      return adminRequest(
+        "/api/admin/order/images",
+        adminPassword,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId: activeProject.id, images: imageIds }),
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/projects")] });
+    },
+  });
+
+  const handleSaveImageOrder = async () => {
+    setIsSavingImageOrder(true);
+    try {
+      await updateImageOrderMutation.mutateAsync(orderedImageIds);
+      setHasImageOrderChanges(false);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSavingImageOrder(false);
+    }
+  };
+
+  const moveImage = (index: number, direction: "up" | "down") => {
+    const newOrder = [...orderedImageIds];
+    if (direction === "up" && index > 0) {
+      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+    } else if (direction === "down" && index < newOrder.length - 1) {
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    }
+    setOrderedImageIds(newOrder);
+    setHasImageOrderChanges(true);
+  };
+
   const updateOrderMutation = useMutation({
     mutationFn: async (locationsIds: string[]) => {
       return adminRequest(
@@ -760,7 +815,20 @@ export default function Admin() {
   const deleteImageMutation = useMutation({
     mutationFn: async (payload: { projectId: string; imageId: string }) => {
       return adminRequest(
-        `/api/projects/${payload.projectId}/images/${payload.imageId}?deleteCloudinary=true`,
+        `/api/projects/${payload.projectId}/images/${encodeURIComponent(payload.imageId)}?deleteCloudinary=true`,
+        adminPassword,
+        { method: "DELETE" }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [apiUrl("/api/projects")] });
+    },
+  });
+
+  const deleteAllImagesMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      return adminRequest(
+        `/api/projects/${projectId}/images?deleteCloudinary=true`,
         adminPassword,
         { method: "DELETE" }
       );
@@ -988,8 +1056,9 @@ export default function Admin() {
               </div>
 
               <section className="bg-gray-950/70 border border-gray-800 rounded-lg p-6 space-y-10">
-                <div>
-                  <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">Add New Project</h2>
+                {!activeProject && (
+                  <div>
+                    <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">Add New Project</h2>
                   <div className="grid gap-4 md:grid-cols-6 mb-4">
                     <Input
                       placeholder="Client name"
@@ -1133,9 +1202,21 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {activeProject && (
                   <>
+                    <div className="flex items-center mb-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setActiveProjectId("");
+                        }}
+                        className="pl-0 hover:bg-transparent text-gray-400 hover:text-white uppercase tracking-widest text-xs cursor-pointer"
+                      >
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
+                      </Button>
+                    </div>
                     <div>
                       <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">
                         Edit Project
@@ -1303,49 +1384,111 @@ export default function Admin() {
                     </div>
 
                     <div>
-                      <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">
-                        Manage Images
-                      </h2>
-                      <div className="space-y-3">
-                        {(activeProject.images || []).map((image: ProjectImage) => (
-                          <div
-                            key={image.id}
-                            className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
-                          >
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={image.url}
-                                alt={image.label}
-                                className="h-12 w-16 object-cover rounded-md"
-                              />
-                              <div>
-                                <p className="text-sm">{image.label}</p>
-                                <p className="text-xs text-gray-500">
-                                  {image.url.slice(-24)}
-                                </p>
-                              </div>
-                            </div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-normal font-serif tracking-[0.02em]">
+                          Manage Images
+                        </h2>
+                        <div className="flex gap-2">
+                          {hasImageOrderChanges && (
+                            <Button
+                              onClick={handleSaveImageOrder}
+                              disabled={isSavingImageOrder}
+                              className={`uppercase tracking-widest text-xs cursor-pointer ${isSavingImageOrder ? "animate-pulse" : ""}`}
+                            >
+                              {isSavingImageOrder ? "Saving..." : "Save Order"}
+                            </Button>
+                          )}
+                          {activeProject.images && activeProject.images.length > 0 && (
                             <Button
                               variant="outline"
-                              onClick={() =>
-                                deleteImageMutation.mutate({
-                                  projectId: activeProject.id,
-                                  imageId: image.id,
-                                })
-                              }
-                              className="uppercase tracking-widest text-[10px] cursor-pointer"
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete all images in this project?")) {
+                                  deleteAllImagesMutation.mutate(activeProject.id);
+                                }
+                              }}
+                              className="uppercase tracking-widest text-[10px] cursor-pointer hover:bg-red-600 hover:text-white hover:border-red-600"
                             >
-                              Delete
+                              {deleteAllImagesMutation.isPending ? "Deleting..." : "Delete All"}
                             </Button>
-                          </div>
-                        ))}
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        {orderedImageIds.map((imageId, index) => {
+                          const image = activeProject.images?.find((img: ProjectImage) => img.id === imageId);
+                          if (!image) return null;
+                          return (
+                            <div
+                              key={image.id}
+                              className="flex flex-wrap items-center justify-between gap-3 bg-black/40 border border-gray-800 rounded-md px-4 py-3"
+                            >
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={image.url}
+                                  alt={image.label}
+                                  className="h-12 w-16 object-cover rounded-md"
+                                />
+                                <div>
+                                  <p className="text-sm">{image.label}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {image.url.slice(-24)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-1 mr-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={index === 0}
+                                    onClick={() => moveImage(index, "up")}
+                                    className="h-8 w-8 p-0 hover:bg-gray-800 hover:text-white"
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={index === orderedImageIds.length - 1}
+                                    onClick={() => moveImage(index, "down")}
+                                    className="h-8 w-8 p-0 hover:bg-gray-800 hover:text-white"
+                                  >
+                                    <ArrowDown className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  onClick={() =>
+                                    deleteImageMutation.mutate({
+                                      projectId: activeProject.id,
+                                      imageId: image.id,
+                                    })
+                                  }
+                                  disabled={deleteImageMutation.isPending && deleteImageMutation.variables?.imageId === image.id}
+                                  className="uppercase tracking-widest text-[10px] cursor-pointer hover:bg-red-600 hover:text-white hover:border-red-600"
+                                >
+                                  {deleteImageMutation.isPending && deleteImageMutation.variables?.imageId === image.id ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    "Delete"
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </>
                 )}
 
-                <div>
-                  <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">Existing Projects</h2>
+                {!activeProject && (
+                  <>
+                    <div>
+                      <h2 className="text-xl font-normal font-serif tracking-[0.02em] mb-4">Existing Projects</h2>
                   <div className="flex flex-wrap gap-2 mb-4">
                     <Button
                       variant={selectedState ? "outline" : "default"}
@@ -1501,6 +1644,8 @@ export default function Admin() {
                     })}
                   </div>
                 </div>
+                  </>
+                )}
               </section>
             </div>
           )}
