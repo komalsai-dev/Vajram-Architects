@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
@@ -7,35 +7,178 @@ type Phase = "countdown" | "message" | "loading";
 export default function Launch() {
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>("countdown");
-  const [countdownNumber, setCountdownNumber] = useState(3);
+  const [countdownNumber, setCountdownNumber] = useState(10);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Refs to hold the persistent AudioContext and stop function for the message phase music
+  const musicCtxRef = useRef<AudioContext | null>(null);
+  const musicStopRef = useRef<(() => void) | null>(null);
+
+  // Tick sound for each countdown number
+  const playTick = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.12);
+      osc.onended = () => ctx.close();
+    } catch (_) {}
+  }, []);
+
+
+  const playCelebration = useCallback(() => {
+    try {
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC() as AudioContext;
+      musicCtxRef.current = ctx;
+      const now = ctx.currentTime;
+
+      // ── Continuous section: looping applause and crowd roar ────────────────────
+
+      // Helper: one synthesized clap
+      const makeClap = (startTime: number, vol = 0.5) => {
+        const bufSize = Math.floor(ctx.sampleRate * 0.11);
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2.5);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const bpf = ctx.createBiquadFilter();
+        bpf.type = "bandpass";
+        bpf.frequency.value = 1100 + Math.random() * 400;
+        bpf.Q.value = 0.7;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(vol, startTime);
+        g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.11);
+        src.connect(bpf);
+        bpf.connect(g);
+        g.connect(ctx.destination);
+        src.start(startTime);
+      };
+
+      // Crowd cheer background roar
+      const cheerBufSize = ctx.sampleRate * 5;
+      const cheerBuf = ctx.createBuffer(2, cheerBufSize, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const cd = cheerBuf.getChannelData(ch);
+        for (let i = 0; i < cheerBufSize; i++) cd[i] = Math.random() * 2 - 1;
+      }
+      const cheerSrc = ctx.createBufferSource();
+      cheerSrc.buffer = cheerBuf;
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = "lowpass";
+      lpf.frequency.setValueAtTime(400, now);
+      lpf.frequency.linearRampToValueAtTime(2000, now + 1.0);
+      lpf.frequency.linearRampToValueAtTime(1200, now + 4.0);
+      const cheerGain = ctx.createGain();
+      cheerGain.gain.setValueAtTime(0, now);
+      cheerGain.gain.linearRampToValueAtTime(0.5, now + 0.5);
+      cheerGain.gain.setValueAtTime(0.5, now + 3.5);
+      cheerGain.gain.linearRampToValueAtTime(0, now + 4.5);
+      cheerSrc.connect(lpf);
+      lpf.connect(cheerGain);
+      cheerGain.connect(ctx.destination);
+      cheerSrc.start(now);
+      cheerSrc.stop(now + 4.5);
+
+      // Schedule continuous applause
+      let t = now; 
+      const endTime = now + 4.5;
+      const intervalIds: ReturnType<typeof setInterval>[] = [];
+
+      const scheduleApplause = () => {
+        if (!musicCtxRef.current || ctx.state === "closed") return;
+        const ct = ctx.currentTime;
+        while (t < ct + 0.5 && t < endTime) {
+          // More intense applause feel
+          makeClap(t, 0.5 + Math.random() * 0.4);
+          makeClap(t + 0.03, 0.45 + Math.random() * 0.35);
+          makeClap(t + 0.07, 0.4 + Math.random() * 0.3);
+          makeClap(t + 0.11, 0.35 + Math.random() * 0.25);
+          if (Math.random() > 0.3) makeClap(t + 0.15, 0.3 + Math.random() * 0.2);
+          if (Math.random() > 0.6) makeClap(t + 0.09, 0.4 + Math.random() * 0.3);
+          
+          t += 0.15 + Math.random() * 0.05; // More frequent groups for intensity
+        }
+      };
+
+      const applauseInterval = setInterval(scheduleApplause, 200);
+      intervalIds.push(applauseInterval);
+
+      // Helper: safely close ctx only once
+      const safeClose = () => {
+        if (ctx.state !== "closed") {
+          ctx.close().catch(() => {});
+        }
+        musicCtxRef.current = null;
+        musicStopRef.current = null;
+      };
+
+      // Clean stop function — fade out and close
+      musicStopRef.current = () => {
+        intervalIds.forEach(clearInterval);
+        if (ctx.state === "closed") return;
+        try {
+          cheerGain.gain.cancelScheduledValues(ctx.currentTime);
+          cheerGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+        } catch (_) {}
+        setTimeout(safeClose, 350);
+      };
+
+      // Auto-cleanup after 5.5s (only if not already stopped)
+      setTimeout(() => {
+        intervalIds.forEach(clearInterval);
+        if (musicStopRef.current) {
+          // still not manually stopped — close directly
+          safeClose();
+        }
+      }, 5500);
+
+    } catch (_) {}
+  }, []);
 
   // Handle countdown
   useEffect(() => {
     if (phase !== "countdown") return;
 
     if (countdownNumber > 0) {
+      playTick();
       const timer = setTimeout(() => {
         setCountdownNumber((prev) => prev - 1);
       }, 1000);
       return () => clearTimeout(timer);
     } else {
-      // Countdown finished, show message
+      playCelebration();
       setPhase("message");
       setShowConfetti(true);
     }
-  }, [phase, countdownNumber]);
+  }, [phase, countdownNumber, playTick, playCelebration]);
 
-  // Handle message phase
+  // Handle message phase — stop music when transitioning to loading
   useEffect(() => {
     if (phase !== "message") return;
 
     const timer = setTimeout(() => {
+      // Fade out music before transitioning
+      if (musicStopRef.current) {
+        musicStopRef.current();
+        musicStopRef.current = null;
+      }
       setPhase("loading");
-    }, 3000); // Show message for 3 seconds
+    }, 5000); // Show message for 5 seconds then move to loading
 
     return () => clearTimeout(timer);
   }, [phase]);
+
+
 
   // Handle loading complete - redirect to home
   const handleLoadingComplete = useCallback(() => {
